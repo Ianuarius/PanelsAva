@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PanelsAva.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:PanelsAva.Views"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="PanelsAva.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="PanelsAva">
+        <DockPanel>
+                <Menu DockPanel.Dock="Top">
+                        <MenuItem Header="_View" ItemsSource="{Binding PanelMenuItems}">
+                                <MenuItem.ItemTemplate>
+                                        <DataTemplate>
+                                                <MenuItem Header="{Binding Panel.Title}"
+                                                          IsChecked="{Binding Panel.IsVisible}"
+                                                          ToggleType="CheckBox"
+                                                          Command="{Binding Panel.ToggleVisibilityCommand}" />
+                                        </DataTemplate>
+                                </MenuItem.ItemTemplate>
+                        </MenuItem>
+                </Menu>
+                <views:MainView />
+        </DockPanel>
+</Window>
