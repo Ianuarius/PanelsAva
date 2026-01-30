@@ -3,8 +3,7 @@
 			 xmlns:views="clr-namespace:PanelsAva.Views"
 			 x:Class="PanelsAva.Views.DockHost">
 	<Grid>
-		<Border Background="#202020" />
+		<Border Background="#202020" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 		<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockHost}}" />
-		<Border x:Name="Preview"		Background="#4D7CFF"		Opacity="0.35"		IsVisible="False" />
 	</Grid>
 </UserControl>

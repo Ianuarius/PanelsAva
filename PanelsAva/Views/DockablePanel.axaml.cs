@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Rendering;
 
@@ -16,8 +18,12 @@ public partial class DockablePanel : UserControl
 	Border? titleBar;
 	bool isDragging;
 	bool isFloating;
+	bool isTransitioningToFloat;
 	Point pressPointRoot;
 	Point dragOffset;
+	Pointer? currentPointer;
+	bool wasOverDockHost;
+	Control? previewBorder;
 
 	public DockablePanel()
 	{
@@ -68,8 +74,8 @@ public partial class DockablePanel : UserControl
 			return;
 		}
 
-		var point = e.GetCurrentPoint(titleBar);
-		if (!point.Properties.IsLeftButtonPressed)
+		var e2 = e.GetCurrentPoint(titleBar);
+		if (!e2.Properties.IsLeftButtonPressed)
 		{
 			return;
 		}
@@ -88,6 +94,8 @@ public partial class DockablePanel : UserControl
 		}
 
 		isDragging = true;
+		wasOverDockHost = false; // Reset for new drag session
+		currentPointer = (Pointer)e.Pointer;
 		e.Pointer.Capture(titleBar);
 		e.Handled = true;
 	}
@@ -118,14 +126,16 @@ public partial class DockablePanel : UserControl
 			if (delta.X * delta.X + delta.Y * delta.Y >= threshold * threshold)
 			{
 				BeginFloating(posRoot, visualRoot);
+				MoveFloating(posRoot);
 			}
 		}
-
-		if (isFloating)
+		else
 		{
 			MoveFloating(posRoot);
 			UpdateDockPreview(posRoot, visualRoot);
 		}
+
+		e.Handled = true;
 	}
 
 	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -136,7 +146,8 @@ public partial class DockablePanel : UserControl
 		}
 
 		isDragging = false;
-		// release capture
+		currentPointer?.Capture(null);
+		currentPointer = null;
 		e.Pointer.Capture(null);
 
 		var visualRoot = this.GetVisualRoot() as Visual;
@@ -151,13 +162,27 @@ public partial class DockablePanel : UserControl
 			DockHost.Dock(this);
 		}
 
-		DockHost?.SetPreviewVisible(false);
+		// Hide preview
+		if (previewBorder != null)
+		{
+			FloatingLayer?.Children.Remove(previewBorder);
+			previewBorder = null;
+		}
 	}
 
 	void TitleBarOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
 	{
-		isDragging = false;
-		DockHost?.SetPreviewVisible(false);
+		if (!isTransitioningToFloat)
+		{
+			currentPointer = null;
+			isDragging = false;
+			// Hide preview
+			if (previewBorder != null)
+			{
+				FloatingLayer?.Children.Remove(previewBorder);
+				previewBorder = null;
+			}
+		}
 	}
 
 	void BeginFloating(Point posRoot, Visual visualRoot)
@@ -173,8 +198,11 @@ public partial class DockablePanel : UserControl
 			dragOffset = posRoot - topLeft.Value;
 		}
 
-		MoveToFloatingLayer(FloatingLayer, topLeft ?? new Point(0, 0));
+		isTransitioningToFloat = true;
+		MoveToFloatingLayer(FloatingLayer, posRoot.X - dragOffset.X, posRoot.Y - dragOffset.Y);
 		isFloating = true;
+		currentPointer?.Capture(titleBar);
+		isTransitioningToFloat = false;
 	}
 
 	void MoveFloating(Point posRoot)
@@ -192,12 +220,46 @@ public partial class DockablePanel : UserControl
 
 	void UpdateDockPreview(Point posRoot, Visual visualRoot)
 	{
-		if (DockHost == null)
+		if (DockHost == null || FloatingLayer == null)
 		{
 			return;
 		}
 
-		DockHost.SetPreviewVisible(IsOverDockHost(posRoot, visualRoot));
+		var isOver = IsOverDockHost(posRoot, visualRoot);
+		if (isOver != wasOverDockHost)
+		{
+			wasOverDockHost = isOver;
+		}
+
+		if (isOver)
+		{
+			if (previewBorder == null)
+			{
+				var dockPos = DockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
+				if (dockPos.HasValue)
+				{
+					previewBorder = new Border
+					{
+						Background = new SolidColorBrush(Colors.Blue),
+						Opacity = 0.5,
+						Width = DockHost.Bounds.Width,
+						Height = DockHost.Bounds.Height
+					};
+					previewBorder.SetValue(Panel.ZIndexProperty, 0);
+					Canvas.SetLeft(previewBorder, dockPos.Value.X);
+					Canvas.SetTop(previewBorder, dockPos.Value.Y);
+					FloatingLayer.Children.Add(previewBorder);
+				}
+			}
+		}
+		else
+		{
+			if (previewBorder != null)
+			{
+				FloatingLayer.Children.Remove(previewBorder);
+				previewBorder = null;
+			}
+		}
 	}
 
 	bool IsOverDockHost(Point posRoot, Visual visualRoot)
@@ -214,7 +276,8 @@ public partial class DockablePanel : UserControl
 		}
 
 		var dockRect = new Rect(dockTopLeft.Value, DockHost.Bounds.Size);
-		return dockRect.Contains(posRoot);
+		var contains = dockRect.Contains(posRoot);
+		return contains;
 	}
 
 	static void RemoveFromParent(Control control)
@@ -236,11 +299,12 @@ public partial class DockablePanel : UserControl
 		}
 	}
 
-	void MoveToFloatingLayer(Canvas layer, Point topLeft)
+	void MoveToFloatingLayer(Canvas layer, double left, double top)
 	{
 		RemoveFromParent(this);
 		layer.Children.Add(this);
-		Canvas.SetLeft(this, topLeft.X);
-		Canvas.SetTop(this, topLeft.Y);
+		this.SetValue(Panel.ZIndexProperty, 1);
+		Canvas.SetLeft(this, left);
+		Canvas.SetTop(this, top);
 	}
 }

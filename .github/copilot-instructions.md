@@ -25,6 +25,8 @@
 - Add using Windows.UI; using Microsoft.UI; if using eg. Colors.Transparent.
 - Default layer type is always Tile Layer, NOT FreePaintLayer.
 - Remember to consider DPI scaling if necessary.
+- To build: Stop-Process -Id 9620 -Force dotnet build "e:\Projects\Visual Studio\PanelsAva\PanelsAva.sln" --no-incremental
+- If using debug prints, never print on mouse move events or every tick or something that spams the output full of garbage.
 
 ## Project Overview
 

@@ -11,13 +11,16 @@
 		<Border Grid.Row="0" Height="0" />
 		<Grid Grid.Row="1">
 			<Grid ColumnDefinitions="260,*">
-				<views:DockHost x:Name="LeftDockHost" Grid.Column="0">
-					<views:DockablePanel x:Name="ToolPanel"
-							Title="Panel"
-							Placeholder="Placeholder content"
-							DockHost="{Binding ElementName=LeftDockHost}"
-							FloatingLayer="{Binding ElementName=FloatingLayer}" />
-				</views:DockHost>
+				<Panel Grid.Column="0" ZIndex="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+					<views:DockHost x:Name="LeftDockHost"
+							HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+						<views:DockablePanel x:Name="ToolPanel"
+								Title="Panel"
+								Placeholder="Placeholder content"
+								DockHost="{Binding ElementName=LeftDockHost}"
+								FloatingLayer="{Binding ElementName=FloatingLayer}" />
+					</views:DockHost>
+				</Panel>
 				<Border Grid.Column="1" Background="#1C1C1C" />
 			</Grid>
 			<Canvas x:Name="FloatingLayer" Panel.ZIndex="10" />
