@@ -23,7 +23,6 @@
 - Do not argue with me. If I say something is a problem, then don't tell me it is not. Investigate and fix.
 - Do not think about old project mitigation.
 - Add using Windows.UI; using Microsoft.UI; if using eg. Colors.Transparent.
-- Check FEATURES.md for explanation for features. Don't guess what they do. Check.
 - Default layer type is always Tile Layer, NOT FreePaintLayer.
 - Remember to consider DPI scaling if necessary.
 

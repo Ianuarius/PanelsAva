@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:views="clr-namespace:PanelsAva.Views"
+			 x:Class="PanelsAva.Views.DockHost">
+	<Grid>
+		<Border Background="#202020" />
+		<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockHost}}" />
+		<Border x:Name="Preview"		Background="#4D7CFF"		Opacity="0.35"		IsVisible="False" />
+	</Grid>
+</UserControl>

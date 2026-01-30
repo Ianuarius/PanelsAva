@@ -2,11 +2,13 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using PanelsAva.Views;
-using PanelsAva;
 
 namespace PanelsAva.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
+	public PanelService PanelService { get; } = new PanelService();
+
 }
