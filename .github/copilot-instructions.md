@@ -2,6 +2,7 @@
 
 ## CRITICAL INSTRUCTIONS - ALWAYS FOLLOW
 - Make sure not to leave any half-completed functions or crap without {} or ; in the code.
+- Use tabs, not spaces to indent.
 - Do not update the html documentation unless explicitly asked.
 - Think of what a good programmer would do.
 - If you post ANY code block in chat for implementation requests, you have FAILED. Start over with todo list and file edits.
