@@ -7,10 +7,45 @@ using Avalonia.VisualTree;
 
 namespace PanelsAva.Views;
 
+public class TabGroup
+{
+	public List<DockablePanel> Panels { get; } = new();
+	public int ActiveIndex { get; set; }
+	public DockablePanel ActivePanel => ActiveIndex >= 0 && ActiveIndex < Panels.Count ? Panels[ActiveIndex] : null!;
+
+	public void AddPanel(DockablePanel panel)
+	{
+		if (!Panels.Contains(panel))
+		{
+			Panels.Add(panel);
+			panel.TabGroup = this;
+		}
+	}
+
+	public void RemovePanel(DockablePanel panel)
+	{
+		var index = Panels.IndexOf(panel);
+		if (index >= 0)
+		{
+			Panels.RemoveAt(index);
+			panel.TabGroup = null;
+			if (ActiveIndex >= Panels.Count)
+				ActiveIndex = Math.Max(0, Panels.Count - 1);
+		}
+	}
+
+	public void SetActive(DockablePanel panel)
+	{
+		var index = Panels.IndexOf(panel);
+		if (index >= 0)
+			ActiveIndex = index;
+	}
+}
+
 public partial class DockHost : UserControl
 {
 	Grid? panelsGrid;
-	List<DockablePanel> dockedPanels = new();
+	List<object> dockedItems = new();
 
 	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockHost, bool>(nameof(IsHorizontal), false);
 
@@ -28,14 +63,53 @@ public partial class DockHost : UserControl
 
 	public void RemovePanel(DockablePanel panel)
 	{
-		dockedPanels.Remove(panel);
+		for (int i = 0; i < dockedItems.Count; i++)
+		{
+			if (dockedItems[i] is DockablePanel p && p == panel)
+			{
+				dockedItems.RemoveAt(i);
+				break;
+			}
+			else if (dockedItems[i] is TabGroup tg)
+			{
+				if (tg.Panels.Contains(panel))
+				{
+					tg.RemovePanel(panel);
+					if (tg.Panels.Count == 1)
+					{
+						var remainingPanel = tg.Panels[0];
+						tg.RemovePanel(remainingPanel);
+						dockedItems[i] = remainingPanel;
+					}
+					else if (tg.Panels.Count == 0)
+					{
+						dockedItems.RemoveAt(i);
+					}
+					break;
+				}
+			}
+		}
 		RebuildGrid();
 	}
 
 	public void AddPanel(DockablePanel panel)
 	{
-		if (!dockedPanels.Contains(panel))
-			dockedPanels.Add(panel);
+		bool found = false;
+		for (int i = 0; i < dockedItems.Count; i++)
+		{
+			if (dockedItems[i] is DockablePanel p && p == panel)
+			{
+				found = true;
+				break;
+			}
+			else if (dockedItems[i] is TabGroup tg && tg.Panels.Contains(panel))
+			{
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			dockedItems.Add(panel);
 		RebuildGrid();
 	}
 
@@ -44,17 +118,44 @@ public partial class DockHost : UserControl
 		if (panelsGrid == null) return;
 
 		RemoveFromParent(panel);
-		dockedPanels.Remove(panel);
+		RemovePanel(panel);
 
 		var targetIndex = FindTargetIndex(positionInHost);
-		dockedPanels.Insert(targetIndex, panel);
+		dockedItems.Insert(targetIndex, panel);
+		RebuildGrid();
+	}
+
+	public void DockAsTab(DockablePanel panel, DockablePanel targetPanel)
+	{
+		if (panelsGrid == null) return;
+
+		RemoveFromParent(panel);
+		RemovePanel(panel);
+
+		for (int i = 0; i < dockedItems.Count; i++)
+		{
+			if (dockedItems[i] is DockablePanel p && p == targetPanel)
+			{
+				var newTabGroup = new TabGroup();
+				newTabGroup.AddPanel(targetPanel);
+				newTabGroup.AddPanel(panel);
+				newTabGroup.ActiveIndex = 0;
+				dockedItems[i] = newTabGroup;
+				break;
+			}
+			else if (dockedItems[i] is TabGroup tg && tg.Panels.Contains(targetPanel))
+			{
+				tg.AddPanel(panel);
+				break;
+			}
+		}
 		RebuildGrid();
 	}
 
 	public Rect GetDockPreviewRect(Point positionInHost)
 	{
 		int targetIndex = FindTargetIndex(positionInHost);
-		int newCount = dockedPanels.Count + 1;
+		int newCount = dockedItems.Count + 1;
 		int splitterCount = newCount - 1;
 		double splitterSize = 4;
 		double totalSplitterSize = splitterCount * splitterSize;
@@ -105,9 +206,15 @@ public partial class DockHost : UserControl
 	List<Rect> GetPanelRectsInHost()
 	{
 		var rects = new List<Rect>();
-		for (int i = 0; i < dockedPanels.Count; i++)
+		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			var panel = dockedPanels[i];
+			DockablePanel? panel = null;
+			if (dockedItems[i] is DockablePanel p)
+				panel = p;
+			else if (dockedItems[i] is TabGroup tg)
+				panel = tg.ActivePanel;
+
+			if (panel == null) continue;
 			var topLeft = panel.TranslatePoint(new Point(0, 0), this);
 			if (!topLeft.HasValue) continue;
 			var size = panel.Bounds.Size;
@@ -117,7 +224,7 @@ public partial class DockHost : UserControl
 		return rects;
 	}
 
-	void RebuildGrid()
+	public void RebuildGrid()
 	{
 		if (panelsGrid == null) return;
 
@@ -133,7 +240,7 @@ public partial class DockHost : UserControl
 			panelsGrid.ColumnDefinitions.Clear();
 		}
 
-		for (int i = 0; i < dockedPanels.Count; i++)
+		for (int i = 0; i < dockedItems.Count; i++)
 		{
 			if (i > 0)
 			{
@@ -163,25 +270,55 @@ public partial class DockHost : UserControl
 				}
 			}
 
-			if (IsHorizontal)
+			if (dockedItems[i] is DockablePanel panel)
 			{
-				var colDef = new ColumnDefinition(1, GridUnitType.Star);
-				colDef.MinWidth = 50;
-				panelsGrid.ColumnDefinitions.Add(colDef);
-				var panel = dockedPanels[i];
-				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
-				panelsGrid.Children.Add(panel);
-				ClearFloatingProperties(panel);
+				if (IsHorizontal)
+				{
+					var colDef = new ColumnDefinition(1, GridUnitType.Star);
+					colDef.MinWidth = 50;
+					panelsGrid.ColumnDefinitions.Add(colDef);
+					Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
+					panelsGrid.Children.Add(panel);
+					ClearFloatingProperties(panel);
+					panel.RefreshTabStrip();
+				}
+				else
+				{
+					var rowDef = new RowDefinition(1, GridUnitType.Star);
+					rowDef.MinHeight = 50;
+					panelsGrid.RowDefinitions.Add(rowDef);
+					Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
+					panelsGrid.Children.Add(panel);
+					ClearFloatingProperties(panel);
+					panel.RefreshTabStrip();
+				}
 			}
-			else
+			else if (dockedItems[i] is TabGroup tabGroup)
 			{
-				var rowDef = new RowDefinition(1, GridUnitType.Star);
-				rowDef.MinHeight = 50;
-				panelsGrid.RowDefinitions.Add(rowDef);
-				var panel = dockedPanels[i];
-				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
-				panelsGrid.Children.Add(panel);
-				ClearFloatingProperties(panel);
+				var activePanel = tabGroup.ActivePanel;
+				if (activePanel != null)
+				{
+					if (IsHorizontal)
+					{
+						var colDef = new ColumnDefinition(1, GridUnitType.Star);
+						colDef.MinWidth = 50;
+						panelsGrid.ColumnDefinitions.Add(colDef);
+						Grid.SetColumn(activePanel, panelsGrid.ColumnDefinitions.Count - 1);
+						panelsGrid.Children.Add(activePanel);
+						ClearFloatingProperties(activePanel);
+						activePanel.RefreshTabStrip();
+					}
+					else
+					{
+						var rowDef = new RowDefinition(1, GridUnitType.Star);
+						rowDef.MinHeight = 50;
+						panelsGrid.RowDefinitions.Add(rowDef);
+						Grid.SetRow(activePanel, panelsGrid.RowDefinitions.Count - 1);
+						panelsGrid.Children.Add(activePanel);
+						ClearFloatingProperties(activePanel);
+						activePanel.RefreshTabStrip();
+					}
+				}
 			}
 		}
 		panelsGrid.InvalidateMeasure();

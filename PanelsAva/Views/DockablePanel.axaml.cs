@@ -18,9 +18,12 @@ public partial class DockablePanel : UserControl
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
 	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(IsFloating));
 
+	public TabGroup? TabGroup { get; set; }
+
 	public event EventHandler? CloseRequested;
 
 	Border? titleBar;
+	StackPanel? tabStrip;
 	bool isDragging;
 	bool isFloating;
 	bool isTransitioningToFloat;
@@ -30,6 +33,7 @@ public partial class DockablePanel : UserControl
 	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
 	Control? previewBorder;
+	DockablePanel? tabDropTarget;
 	Button? closeButton;
 	MenuItem? closeMenuItem;
 
@@ -38,6 +42,7 @@ public partial class DockablePanel : UserControl
 		InitializeComponent();
 		DataContext = this;
 		titleBar = this.FindControl<Border>("TitleBar");
+		tabStrip = this.FindControl<StackPanel>("TabStrip");
 		closeButton = this.FindControl<Button>("CloseButton");
 		if (closeButton != null)
 		{
@@ -198,15 +203,28 @@ public partial class DockablePanel : UserControl
 		var posRoot = e.GetPosition(visualRoot);
 		if (isFloating)
 		{
-			var targetDockHost = FindDockHostAt(posRoot, visualRoot);
-			if (targetDockHost != null)
+			if (tabDropTarget != null)
 			{
-				var posInDockHost = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
-				if (posInDockHost.HasValue)
+				var targetDockHost = tabDropTarget.DockHost;
+				if (targetDockHost != null)
 				{
-					var relativePos = posRoot - posInDockHost.Value;
-					targetDockHost.Dock(this, relativePos);
-					DockHost = targetDockHost; // Update the associated DockHost
+					targetDockHost.DockAsTab(this, tabDropTarget);
+					DockHost = targetDockHost;
+				}
+				tabDropTarget = null;
+			}
+			else
+			{
+				var targetDockHost = FindDockHostAt(posRoot, visualRoot);
+				if (targetDockHost != null)
+				{
+					var posInDockHost = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
+					if (posInDockHost.HasValue)
+					{
+						var relativePos = posRoot - posInDockHost.Value;
+						targetDockHost.Dock(this, relativePos);
+						DockHost = targetDockHost;
+					}
 				}
 			}
 		}
@@ -288,6 +306,17 @@ public partial class DockablePanel : UserControl
 	{
 		if (FloatingLayer == null) return;
 
+		tabDropTarget = FindPanelAt(posRoot, visualRoot);
+		if (tabDropTarget != null)
+		{
+			if (previewBorder != null)
+			{
+				FloatingLayer.Children.Remove(previewBorder);
+				previewBorder = null;
+			}
+			return;
+		}
+
 		var targetDockHost = FindDockHostAt(posRoot, visualRoot);
 		if (targetDockHost != null)
 		{
@@ -345,6 +374,46 @@ public partial class DockablePanel : UserControl
 		return null;
 	}
 
+	DockablePanel? FindPanelAt(Point posRoot, Visual visualRoot)
+	{
+		var panels = visualRoot.GetVisualDescendants().OfType<DockablePanel>();
+		foreach (var p in panels)
+		{
+			if (p == this) continue;
+			if (p.isFloating) continue;
+
+			var titleBar = p.titleBar;
+			var tabStrip = p.tabStrip;
+
+			if (titleBar != null && titleBar.IsVisible)
+			{
+				var titleTopLeft = titleBar.TranslatePoint(new Point(0, 0), visualRoot);
+				if (titleTopLeft.HasValue)
+				{
+					var titleRect = new Rect(titleTopLeft.Value, titleBar.Bounds.Size);
+					if (titleRect.Contains(posRoot))
+					{
+						return p;
+					}
+				}
+			}
+
+			if (tabStrip != null && tabStrip.IsVisible)
+			{
+				var stripTopLeft = tabStrip.TranslatePoint(new Point(0, 0), visualRoot);
+				if (stripTopLeft.HasValue)
+				{
+					var stripRect = new Rect(stripTopLeft.Value, tabStrip.Bounds.Size);
+					if (stripRect.Contains(posRoot))
+					{
+						return p;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	static void RemoveFromParent(Control control)
 	{
 		if (control.Parent is Panel panel)
@@ -381,5 +450,96 @@ public partial class DockablePanel : UserControl
 	void CloseMenuItemOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
 	{
 		CloseRequested?.Invoke(this, EventArgs.Empty);
+	}
+
+	public void RefreshTabStrip()
+	{
+		if (tabStrip == null || titleBar == null) return;
+
+		tabStrip.Children.Clear();
+
+		if (TabGroup == null || TabGroup.Panels.Count <= 1)
+		{
+			tabStrip.IsVisible = false;
+			titleBar.IsVisible = true;
+			return;
+		}
+
+		tabStrip.IsVisible = true;
+		titleBar.IsVisible = false;
+
+		for (int i = 0; i < TabGroup.Panels.Count; i++)
+		{
+			var panel = TabGroup.Panels[i];
+			var isActive = i == TabGroup.ActiveIndex;
+
+			var tabBorder = new Border
+			{
+				Background = new SolidColorBrush(isActive ? Color.FromRgb(58, 58, 58) : Color.FromRgb(42, 42, 42)),
+				Padding = new Thickness(6, 0, 6, 0),
+				Tag = panel
+			};
+
+			var tabGrid = new Grid
+			{
+				ColumnDefinitions = new ColumnDefinitions("*,Auto")
+			};
+
+			var tabText = new TextBlock
+			{
+				Text = panel.Title,
+				FontSize = 12,
+				VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+				Foreground = new SolidColorBrush(Colors.White)
+			};
+			Grid.SetColumn(tabText, 0);
+			tabGrid.Children.Add(tabText);
+
+			var tabCloseButton = new Button
+			{
+				Content = "✖",
+				FontSize = 10,
+				Width = 20,
+				Height = 20,
+				Margin = new Thickness(4, 0, -8, 0),
+				Padding = new Thickness(0, 3, 0, 0),
+				Background = Brushes.Transparent,
+				Foreground = new SolidColorBrush(Colors.White),
+				BorderThickness = new Thickness(0),
+				Tag = panel
+			};
+			Grid.SetColumn(tabCloseButton, 1);
+			tabGrid.Children.Add(tabCloseButton);
+
+			tabBorder.Child = tabGrid;
+
+			tabBorder.PointerPressed += TabOnPointerPressed;
+			tabCloseButton.Click += TabCloseButtonOnClick;
+
+			tabStrip.Children.Add(tabBorder);
+		}
+	}
+
+	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (sender is Border border && border.Tag is DockablePanel panel && TabGroup != null)
+		{
+			var e2 = e.GetCurrentPoint(border);
+			if (e2.Properties.IsLeftButtonPressed)
+			{
+				TabGroup.SetActive(panel);
+				DockHost?.RebuildGrid();
+				e.Handled = true;
+			}
+		}
+	}
+
+	void TabCloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+	{
+		if (sender is Button button && button.Tag is DockablePanel panel)
+		{
+			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
+		}
 	}
 }
