@@ -9,6 +9,5 @@ namespace PanelsAva.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-	public PanelService PanelService { get; } = new PanelService();
 
 }

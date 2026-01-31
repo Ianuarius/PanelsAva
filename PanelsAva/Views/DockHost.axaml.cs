@@ -26,7 +26,7 @@ public partial class DockHost : UserControl
 			return;
 		}
 
-		if (control.Parent is Control parentControl)
+		if (control.Parent is DockablePanel parentControl)
 		{
 			var contentProp = parentControl.GetType().GetProperty("Content");
 			if (contentProp != null && contentProp.CanWrite)

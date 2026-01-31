@@ -84,24 +84,17 @@ public partial class DockablePanel : UserControl
 
 	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
-		if (titleBar == null)
-		{
-			return;
-		}
+		if (titleBar == null) return;
 
 		var e2 = e.GetCurrentPoint(titleBar);
-		if (!e2.Properties.IsLeftButtonPressed)
-		{
-			return;
-		}
+		if (!e2.Properties.IsLeftButtonPressed) return;
 
 		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null)
-		{
-			return;
-		}
+		if (visualRoot == null) return;
 
 		pressPointRoot = e.GetPosition(visualRoot);
+
+		// Calculates the drag offset when the pointer is pressed on the title bar. Translates the panel's top-left corner to the visual root's (window) coordinate space, computes the difference from the press point, and stores a proportional X offset (relative to panel width) and absolute Y offset for smooth dragging in DockablePanel.
 		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
 		if (panelPos.HasValue)
 		{
@@ -114,30 +107,23 @@ public partial class DockablePanel : UserControl
 		isDragging = true;
 		wasOverDockHost = false;
 		currentPointer = (Pointer)e.Pointer;
+		// Ensures all subsequent pointer events (like move and release) are routed to titleBar during dragging, even if the pointer leaves the title bar area.
 		e.Pointer.Capture(titleBar);
 		e.Handled = true;
 	}
 
 	void TitleBarOnPointerMoved(object? sender, PointerEventArgs e)
 	{
-		if (!isDragging)
-		{
-			return;
-		}
+		if (!isDragging) return;
 
 		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null)
-		{
-			return;
-		}
+		if (visualRoot == null) return;
 
 		var posRoot = e.GetPosition(visualRoot);
 		var delta = posRoot - pressPointRoot;
 		double scale = 1.0;
-		if (visualRoot is IRenderRoot rr)
-		{
-			scale = rr.RenderScaling;
-		}
+		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
+		
 		var threshold = 10 * scale;
 		if (!isFloating)
 		{
@@ -158,10 +144,7 @@ public partial class DockablePanel : UserControl
 
 	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
 	{
-		if (!isDragging)
-		{
-			return;
-		}
+		if (!isDragging) return;
 
 		isDragging = false;
 		currentPointer?.Capture(null);
@@ -169,18 +152,11 @@ public partial class DockablePanel : UserControl
 		e.Pointer.Capture(null);
 
 		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null)
-		{
-			return;
-		}
+		if (visualRoot == null) return;
 
 		var posRoot = e.GetPosition(visualRoot);
-		if (isFloating && DockHost != null && IsOverDockHost(posRoot, visualRoot))
-		{
-			DockHost.Dock(this);
-		}
+		if (isFloating && DockHost != null && IsOverDockHost(posRoot, visualRoot)) DockHost.Dock(this);
 
-		// Hide preview
 		if (previewBorder != null)
 		{
 			FloatingLayer?.Children.Remove(previewBorder);
@@ -194,7 +170,7 @@ public partial class DockablePanel : UserControl
 		{
 			currentPointer = null;
 			isDragging = false;
-			// Hide preview
+			
 			if (previewBorder != null)
 			{
 				FloatingLayer?.Children.Remove(previewBorder);
@@ -205,10 +181,7 @@ public partial class DockablePanel : UserControl
 
 	void BeginFloating(Point posRoot, Visual visualRoot)
 	{
-		if (FloatingLayer == null)
-		{
-			return;
-		}
+		if (FloatingLayer == null) return;
 
 		isTransitioningToFloat = true;
 		
@@ -232,22 +205,13 @@ public partial class DockablePanel : UserControl
 
 	void MoveFloating(Point posRoot)
 	{
-		if (FloatingLayer == null)
-		{
-			return;
-		}
+		if (FloatingLayer == null) return;
 
 		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null)
-		{
-			return;
-		}
+		if (visualRoot == null) return;
 
 		var floatingLayerPos = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!floatingLayerPos.HasValue)
-		{
-			return;
-		}
+		if (!floatingLayerPos.HasValue) return;
 
 		var currentDragOffset = new Point(
 			this.Bounds.Width * dragOffsetRatioX,
@@ -263,16 +227,10 @@ public partial class DockablePanel : UserControl
 
 	void UpdateDockPreview(Point posRoot, Visual visualRoot)
 	{
-		if (DockHost == null || FloatingLayer == null)
-		{
-			return;
-		}
+		if (DockHost == null || FloatingLayer == null) return;
 
 		var isOver = IsOverDockHost(posRoot, visualRoot);
-		if (isOver != wasOverDockHost)
-		{
-			wasOverDockHost = isOver;
-		}
+		if (isOver != wasOverDockHost) wasOverDockHost = isOver;
 
 		if (isOver)
 		{
@@ -307,16 +265,10 @@ public partial class DockablePanel : UserControl
 
 	bool IsOverDockHost(Point posRoot, Visual visualRoot)
 	{
-		if (DockHost == null)
-		{
-			return false;
-		}
+		if (DockHost == null) return false;
 
 		var dockTopLeft = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!dockTopLeft.HasValue)
-		{
-			return false;
-		}
+		if (!dockTopLeft.HasValue) return false;
 
 		var dockRect = new Rect(dockTopLeft.Value, DockHost.Bounds.Size);
 		var contains = dockRect.Contains(posRoot);

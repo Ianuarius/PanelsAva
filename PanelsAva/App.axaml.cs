@@ -23,8 +23,6 @@ public partial class App : Application
             {
                 DataContext = viewModel
             };
-            desktop.Exit += async (_, __) => await viewModel.PanelService.SaveAsync();
-            _ = viewModel.PanelService.LoadAsync();
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -33,7 +31,6 @@ public partial class App : Application
             {
                 DataContext = viewModel
             };
-            _ = viewModel.PanelService.LoadAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
