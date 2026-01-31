@@ -247,22 +247,29 @@ public partial class DockablePanel : UserControl
 
 		if (isOver)
 		{
-			if (previewBorder == null)
+			var dockTopLeft = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
+			var dockPos = DockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
+			if (dockTopLeft.HasValue && dockPos.HasValue)
 			{
-				var dockPos = DockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
-				if (dockPos.HasValue)
+				var relativePos = posRoot - dockTopLeft.Value;
+				var previewRect = DockHost.GetDockPreviewRect(relativePos);
+				if (previewRect.Width > 0 && previewRect.Height > 0)
 				{
-					previewBorder = new Border
+					if (previewBorder == null)
 					{
-						Background = new SolidColorBrush(Colors.Blue),
-						Opacity = 0.5,
-						Width = DockHost.Bounds.Width,
-						Height = DockHost.Bounds.Height
-					};
-					previewBorder.SetValue(Panel.ZIndexProperty, 0);
-					Canvas.SetLeft(previewBorder, dockPos.Value.X);
-					Canvas.SetTop(previewBorder, dockPos.Value.Y);
-					FloatingLayer.Children.Add(previewBorder);
+						previewBorder = new Border
+						{
+							Background = new SolidColorBrush(Colors.Blue),
+							Opacity = 0.5
+						};
+						previewBorder.SetValue(Panel.ZIndexProperty, 0);
+						FloatingLayer.Children.Add(previewBorder);
+					}
+
+					previewBorder.Width = previewRect.Width;
+					previewBorder.Height = previewRect.Height;
+					Canvas.SetLeft(previewBorder, dockPos.Value.X + previewRect.X);
+					Canvas.SetTop(previewBorder, dockPos.Value.Y + previewRect.Y);
 				}
 			}
 		}

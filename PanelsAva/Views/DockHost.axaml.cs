@@ -35,33 +35,73 @@ public partial class DockHost : UserControl
 		if (panelsGrid == null) return;
 
 		RemoveFromParent(panel);
+		dockedPanels.Remove(panel);
 
 		var targetIndex = FindTargetIndex(positionInHost);
 		dockedPanels.Insert(targetIndex, panel);
 		RebuildGrid();
 	}
 
+	public Rect GetDockPreviewRect(Point positionInHost)
+	{
+		if (dockedPanels.Count == 0)
+		{
+			return new Rect(0, 0, Bounds.Width, Bounds.Height);
+		}
+
+		var panelRects = GetPanelRectsInHost();
+		if (panelRects.Count == 0)
+		{
+			return new Rect(0, 0, Bounds.Width, Bounds.Height);
+		}
+
+		for (int i = 0; i < panelRects.Count; i++)
+		{
+			var rect = panelRects[i];
+			var midY = rect.Y + rect.Height * 0.5;
+			if (positionInHost.Y < midY)
+			{
+				var height = rect.Height * 0.5;
+				return new Rect(0, rect.Y, Bounds.Width, height);
+			}
+		}
+
+		var lastRect = panelRects[panelRects.Count - 1];
+		var lastHeight = lastRect.Height * 0.5;
+		return new Rect(0, lastRect.Y + lastRect.Height - lastHeight, Bounds.Width, lastHeight);
+	}
+
 	int FindTargetIndex(Point positionInHost)
 	{
-		var panelCount = dockedPanels.Count;
-		if (panelCount == 0) return 0;
+		var panelRects = GetPanelRectsInHost();
+		if (panelRects.Count == 0) return 0;
 
-		var totalHeight = Bounds.Height;
-		if (totalHeight <= 0) return 0;
-
-		var panelHeight = totalHeight / panelCount;
-		double cumulativeY = 0;
-
-		for (int i = 0; i < panelCount; i++)
+		for (int i = 0; i < panelRects.Count; i++)
 		{
-			cumulativeY += panelHeight;
-			if (positionInHost.Y < cumulativeY)
+			var rect = panelRects[i];
+			var midY = rect.Y + rect.Height * 0.5;
+			if (positionInHost.Y < midY)
 			{
 				return i;
 			}
 		}
 
-		return panelCount; // append at end
+		return panelRects.Count;
+	}
+
+	List<Rect> GetPanelRectsInHost()
+	{
+		var rects = new List<Rect>();
+		for (int i = 0; i < dockedPanels.Count; i++)
+		{
+			var panel = dockedPanels[i];
+			var topLeft = panel.TranslatePoint(new Point(0, 0), this);
+			if (!topLeft.HasValue) continue;
+			var size = panel.Bounds.Size;
+			if (size.Width <= 0 || size.Height <= 0) continue;
+			rects.Add(new Rect(topLeft.Value, size));
+		}
+		return rects;
 	}
 
 	void RebuildGrid()
