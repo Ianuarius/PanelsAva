@@ -141,7 +141,7 @@ public partial class DockHost : UserControl
 					panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(4, GridUnitType.Pixel));
 					var splitter = new GridSplitter
 					{
-						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(100, 100, 100)),
 						ResizeDirection = GridResizeDirection.Columns,
 						Width = 4
 					};
@@ -153,7 +153,7 @@ public partial class DockHost : UserControl
 					panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
 					var splitter = new GridSplitter
 					{
-						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(100, 100, 100)),
 						ResizeDirection = GridResizeDirection.Rows,
 						Height = 4
 					};
@@ -164,7 +164,9 @@ public partial class DockHost : UserControl
 
 			if (IsHorizontal)
 			{
-				panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+				var colDef = new ColumnDefinition(1, GridUnitType.Star);
+				colDef.MinWidth = 50;
+				panelsGrid.ColumnDefinitions.Add(colDef);
 				var panel = dockedPanels[i];
 				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
 				panelsGrid.Children.Add(panel);
@@ -172,7 +174,9 @@ public partial class DockHost : UserControl
 			}
 			else
 			{
-				panelsGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+				var rowDef = new RowDefinition(1, GridUnitType.Star);
+				rowDef.MinHeight = 50;
+				panelsGrid.RowDefinitions.Add(rowDef);
 				var panel = dockedPanels[i];
 				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
 				panelsGrid.Children.Add(panel);

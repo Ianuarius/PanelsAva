@@ -11,10 +11,25 @@
 		<vm:MainViewModel />
 	</Design.DataContext>
 
-	<Grid RowDefinitions="*,Auto" ColumnDefinitions="260,*,260">
-		<views:DockHost x:Name="LeftDockHost" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-		<Border Grid.Row="0" Grid.Column="1" Background="#1C1C1C" />
-		<views:DockHost x:Name="RightDockHost" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-		<views:DockHost x:Name="BottomDockHost" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHorizontal="True" MinHeight="150" />
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="2*" />
+			<RowDefinition Height="4" />
+			<RowDefinition Height="150" MinHeight="100" MaxHeight="500" />
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="260" MinWidth="100" MaxWidth="500" />
+			<ColumnDefinition Width="4" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="4" />
+			<ColumnDefinition Width="260" MinWidth="100" MaxWidth="500" />
+		</Grid.ColumnDefinitions>
+		<views:DockHost x:Name="LeftDockHost" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<GridSplitter Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
+		<Border Grid.Row="0" Grid.Column="2" Background="#1C1C1C" />
+		<GridSplitter Grid.Row="0" Grid.Column="3" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
+		<views:DockHost x:Name="RightDockHost" Grid.Row="0" Grid.Column="4" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<GridSplitter Grid.Row="1" Grid.Column="2" Background="#646464" ResizeDirection="Rows" Height="4" />
+		<views:DockHost x:Name="BottomDockHost" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHorizontal="True" />
 	</Grid>
 </UserControl>
