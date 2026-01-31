@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia;
+using System;
 
 namespace PanelsAva.Views;
 

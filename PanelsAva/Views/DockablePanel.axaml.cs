@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Rendering;
+using System;
 
 namespace PanelsAva.Views;
 
@@ -67,6 +68,18 @@ public partial class DockablePanel : UserControl
 	public void SetFloating(bool floating)
 	{
 		isFloating = floating;
+	}
+
+	protected override Size MeasureOverride(Size availableSize)
+	{
+		var size = base.MeasureOverride(availableSize);
+		if (double.IsInfinity(availableSize.Width) || double.IsInfinity(availableSize.Height))
+		{
+			var width = double.IsInfinity(availableSize.Width) ? Math.Max(size.Width, 200) : size.Width;
+			var height = double.IsInfinity(availableSize.Height) ? Math.Max(size.Height, 120) : size.Height;
+			return new Size(width, height);
+		}
+		return size;
 	}
 
 	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)

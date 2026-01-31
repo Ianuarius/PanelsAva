@@ -1,9 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:views="clr-namespace:PanelsAva.Views"
-			 x:Class="PanelsAva.Views.DockHost">
-	<Grid>
-		<Border Background="#202020" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-		<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockHost}}" />
-	</Grid>
+			 x:Class="PanelsAva.Views.DockHost"
+			 Background="#202020">
+	<ContentPresenter />
 </UserControl>

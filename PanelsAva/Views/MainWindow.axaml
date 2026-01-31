@@ -3,7 +3,7 @@
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:views="clr-namespace:PanelsAva.Views"
-		mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
+		mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720" Width="1280" Height="720"
 		x:Class="PanelsAva.Views.MainWindow"
 		Icon="/Assets/avalonia-logo.ico"
 		Title="PanelsAva">
@@ -18,7 +18,8 @@
 								Title="Panel"
 								Placeholder="Placeholder content"
 								DockHost="{Binding ElementName=LeftDockHost}"
-								FloatingLayer="{Binding ElementName=FloatingLayer}" />
+								FloatingLayer="{Binding ElementName=FloatingLayer}"
+								MaxHeight="300" />
 					</views:DockHost>
 				</Panel>
 				<Border Grid.Column="1" Background="#1C1C1C" />
