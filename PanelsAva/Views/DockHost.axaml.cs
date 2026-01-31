@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using Avalonia.VisualTree;
+using System.Diagnostics;
 
 namespace PanelsAva.Views;
 
@@ -312,7 +313,6 @@ public partial class DockHost : UserControl
 						Grid.SetColumn(activePanel, panelsGrid.ColumnDefinitions.Count - 1);
 						panelsGrid.Children.Add(activePanel);
 						ClearFloatingProperties(activePanel);
-						activePanel.RefreshTabStrip();
 					}
 					else
 					{
@@ -322,8 +322,12 @@ public partial class DockHost : UserControl
 						Grid.SetRow(activePanel, panelsGrid.RowDefinitions.Count - 1);
 						panelsGrid.Children.Add(activePanel);
 						ClearFloatingProperties(activePanel);
-						activePanel.RefreshTabStrip();
 					}
+				}
+				
+				for (int j = 0; j < tabGroup.Panels.Count; j++)
+				{
+					tabGroup.Panels[j].RefreshTabStrip();
 				}
 			}
 		}

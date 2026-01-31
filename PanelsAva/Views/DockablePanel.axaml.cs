@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Rendering;
+using Avalonia.Threading;
 using System;
 using System.Linq;
 
@@ -98,6 +99,18 @@ public partial class DockablePanel : UserControl
 	{
 		isFloating = floating;
 		IsFloating = floating;
+		
+		if (floating)
+		{
+			TabGroup = null;
+			RefreshTabStrip();
+		}
+		
+		if (closeButton != null)
+		{
+			closeButton.IsVisible = floating;
+		}
+		
 		if (titleBar != null)
 		{
 			if (floating)
@@ -273,11 +286,51 @@ public partial class DockablePanel : UserControl
 		}
 	}
 
-	void BeginDragFromTab(PointerPressedEventArgs e)
+	void BeginDragFromTab(PointerPressedEventArgs e, Control origTabBorder)
 	{
-		var handle = (Control?)tabStrip ?? titleBar;
+		Control? handle = origTabBorder;
+		if (handle == null)
+		{
+			handle = tabStrip;
+			if (handle == null) handle = titleBar;
+		}
 		if (handle == null) return;
 		BeginDrag(handle, e);
+	}
+
+	void BeginDragAfterActivate(Point pressPointRoot, IPointer pointer)
+	{
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+
+		Control? handle = null;
+		if (tabStrip != null)
+		{
+			for (int i = 0; i < tabStrip.Children.Count; i++)
+			{
+				if (tabStrip.Children[i] is Border b && ReferenceEquals(b.Tag, this))
+				{
+					handle = b;
+					break;
+				}
+			}
+		}
+		if (handle == null) handle = titleBar;
+		if (handle == null) return;
+
+		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!panelPos.HasValue) return;
+
+		panelPosAtPressRoot = panelPos.Value;
+		var dragOffset = pressPointRoot - panelPosAtPressRoot;
+		dragOffsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
+		dragOffsetAbsoluteY = dragOffset.Y;
+		this.pressPointRoot = pressPointRoot;
+
+		isDragging = true;
+		currentPointer = (Pointer)pointer;
+		dragHandle = handle;
+		pointer.Capture(handle);
 	}
 
 	void BeginFloating(Point posRoot, Visual visualRoot)
@@ -520,11 +573,6 @@ public partial class DockablePanel : UserControl
 				Tag = panel
 			};
 
-			var tabGrid = new Grid
-			{
-				ColumnDefinitions = new ColumnDefinitions("*,Auto")
-			};
-
 			var tabText = new TextBlock
 			{
 				Text = panel.Title,
@@ -533,32 +581,12 @@ public partial class DockablePanel : UserControl
 				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
 				Foreground = new SolidColorBrush(Colors.White)
 			};
-			Grid.SetColumn(tabText, 0);
-			tabGrid.Children.Add(tabText);
-
-			var tabCloseButton = new Button
-			{
-				Content = "✖",
-				FontSize = 10,
-				Width = 20,
-				Height = 20,
-				Margin = new Thickness(4, 0, -8, 0),
-				Padding = new Thickness(0, 3, 0, 0),
-				Background = Brushes.Transparent,
-				Foreground = new SolidColorBrush(Colors.White),
-				BorderThickness = new Thickness(0),
-				Tag = panel
-			};
-			Grid.SetColumn(tabCloseButton, 1);
-			tabGrid.Children.Add(tabCloseButton);
-
-			tabBorder.Child = tabGrid;
+			tabBorder.Child = tabText;
 
 			tabBorder.PointerPressed += TabOnPointerPressed;
 			tabBorder.PointerMoved += TabOnPointerMoved;
 			tabBorder.PointerReleased += TabOnPointerReleased;
 			tabBorder.PointerCaptureLost += TabOnPointerCaptureLost;
-			tabCloseButton.Click += TabCloseButtonOnClick;
 
 			tabStrip.Children.Add(tabBorder);
 		}
@@ -571,9 +599,25 @@ public partial class DockablePanel : UserControl
 			var e2 = e.GetCurrentPoint(border);
 			if (e2.Properties.IsLeftButtonPressed)
 			{
-				TabGroup.SetActive(panel);
-				DockHost?.RebuildGrid();
-				panel.BeginDragFromTab(e);
+				var wasActive = TabGroup.ActivePanel == panel;
+				if (wasActive)
+				{
+					panel.BeginDragFromTab(e, border);
+				}
+				else
+				{
+					var visualRoot = this.GetVisualRoot() as Visual;
+					if (visualRoot == null) return;
+					var pressPointRoot = e.GetPosition(visualRoot);
+					var pointer = e.Pointer;
+
+					TabGroup.SetActive(panel);
+					DockHost?.RebuildGrid();
+					Dispatcher.UIThread.InvokeAsync(() =>
+					{
+						panel.BeginDragAfterActivate(pressPointRoot, pointer);
+					}, DispatcherPriority.Render);
+				}
 				e.Handled = true;
 			}
 		}
@@ -592,13 +636,5 @@ public partial class DockablePanel : UserControl
 	void TabOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
 	{
 		DragCaptureLost(e);
-	}
-
-	void TabCloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-	{
-		if (sender is Button button && button.Tag is DockablePanel panel)
-		{
-			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
-		}
 	}
 }

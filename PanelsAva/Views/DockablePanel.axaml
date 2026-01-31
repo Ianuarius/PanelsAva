@@ -14,7 +14,6 @@
 							HorizontalAlignment="Left"
 							Foreground="#FFFFFF" />
 					<Button x:Name="CloseButton" Content="✖" FontSize="10" Width="20" Height="20" Margin="4,0,-8,0" Padding="0,3,0,0" Grid.Column="1"
-							IsVisible="{Binding IsFloating}"
 							Background="Transparent" Foreground="#FFFFFF" BorderThickness="0">
 						<Button.Styles>
 							<Style Selector="Button:pointerover">
