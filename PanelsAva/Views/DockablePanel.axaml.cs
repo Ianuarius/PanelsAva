@@ -8,6 +8,7 @@ using Avalonia.Rendering;
 using Avalonia.Threading;
 using System;
 using System.Linq;
+using System.Diagnostics;
 
 namespace PanelsAva.Views;
 
@@ -38,6 +39,7 @@ public partial class DockablePanel : UserControl
 	DockablePanel? tabDropTarget;
 	Button? closeButton;
 	MenuItem? closeMenuItem;
+	bool loggedMoveOnce = false;
 
 	public DockablePanel()
 	{
@@ -183,6 +185,8 @@ public partial class DockablePanel : UserControl
 			dragOffsetAbsoluteY = dragOffset.Y;
 		}
 
+		Debug.WriteLine($"[BeginDrag] {Title}: pressPointRoot={pressPointRoot} panelPosAtPressRoot={panelPosAtPressRoot} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} handle={handle.GetType().Name}");
+
 		isDragging = true;
 		currentPointer = (Pointer)e.Pointer;
 		dragHandle = handle;
@@ -295,10 +299,17 @@ public partial class DockablePanel : UserControl
 			if (handle == null) handle = titleBar;
 		}
 		if (handle == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot != null)
+		{
+			var handlePos = handle.TranslatePoint(new Point(0, 0), visualRoot);
+			var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+			Debug.WriteLine($"[BeginDragFromTab] {Title}: handle={handle.GetType().Name} handlePos={handlePos?.ToString() ?? "null"} panelPos={panelPos?.ToString() ?? "null"}");
+		}
 		BeginDrag(handle, e);
 	}
 
-	void BeginDragAfterActivate(Point pressPointRoot, IPointer pointer)
+	void BeginDragAfterActivate(Point pressPointRoot, IPointer pointer, double clickXInsideTab)
 	{
 		var visualRoot = this.GetVisualRoot() as Visual;
 		if (visualRoot == null) return;
@@ -318,15 +329,22 @@ public partial class DockablePanel : UserControl
 		if (handle == null) handle = titleBar;
 		if (handle == null) return;
 
-		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!panelPos.HasValue) return;
+		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!panelPosInRoot.HasValue) return;
 
-		panelPosAtPressRoot = panelPos.Value;
-		var dragOffset = pressPointRoot - panelPosAtPressRoot;
-		dragOffsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
-		dragOffsetAbsoluteY = dragOffset.Y;
-		this.pressPointRoot = pressPointRoot;
+		// Use titleBar position so the pointer lines up with the title bar when floating
+		var titleBarPosInRoot = titleBar?.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!titleBarPosInRoot.HasValue) return;
 
+// offsetX is distance from panel left to the click point inside the title bar (title bar offset + clickXInsideTab)
+			var titleBarOffsetInPanelX = titleBarPosInRoot.Value.X - panelPosInRoot.Value.X;
+			var offsetX = titleBarOffsetInPanelX + clickXInsideTab;
+			dragOffsetRatioX = this.Bounds.Width > 0 ? offsetX / this.Bounds.Width : 0;
+			dragOffsetAbsoluteY = pressPointRoot.Y - panelPosInRoot.Value.Y;
+			this.pressPointRoot = pressPointRoot;
+			panelPosAtPressRoot = panelPosInRoot.Value;
+
+			Debug.WriteLine($"[BeginDragAfterActivate] {Title}: pressPointRoot={pressPointRoot} panelPosInRoot={panelPosInRoot.Value} titleBarPosInRoot={titleBarPosInRoot.Value} titleBarOffsetInPanelX={titleBarOffsetInPanelX:F1} clickXInsideTab={clickXInsideTab:F1} offsetX={offsetX:F1} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} handle={handle.GetType().Name}");
 		isDragging = true;
 		currentPointer = (Pointer)pointer;
 		dragHandle = handle;
@@ -338,6 +356,7 @@ public partial class DockablePanel : UserControl
 		if (FloatingLayer == null) return;
 
 		isTransitioningToFloat = true;
+		loggedMoveOnce = false;
 		
 		if (DockHost != null)
 		{
@@ -350,6 +369,7 @@ public partial class DockablePanel : UserControl
 		if (panelPosInRoot.HasValue && floatingLayerPosInRoot.HasValue)
 		{
 			var panelPosInFloatingLayer = panelPosInRoot.Value - floatingLayerPosInRoot.Value;
+			Debug.WriteLine($"[BeginFloating] {Title}: panelPosInRoot={panelPosInRoot.Value} floatingLayerPosInRoot={floatingLayerPosInRoot.Value} panelPosInFloatingLayer={panelPosInFloatingLayer}");
 			MoveToFloatingLayer(FloatingLayer, panelPosInFloatingLayer.X, panelPosInFloatingLayer.Y);
 		}
 		else
@@ -376,8 +396,16 @@ public partial class DockablePanel : UserControl
 			this.Bounds.Width * dragOffsetRatioX,
 			dragOffsetAbsoluteY
 		);
-		
+
 		var posInFloatingLayer = posRoot - floatingLayerPos.Value;
+
+		if (!loggedMoveOnce)
+		{
+			loggedMoveOnce = true;
+			Debug.WriteLine($"[MoveFloating] {Title}: posRoot={posRoot} floatingLayerPos={floatingLayerPos.Value} posInFloatingLayer={posInFloatingLayer} panel.Bounds.Width={this.Bounds.Width} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} currentDragOffset={currentDragOffset}");
+		}
+		
+
 		var panelPos = posInFloatingLayer - currentDragOffset;
 		
 		Canvas.SetLeft(this, panelPos.X);
@@ -602,6 +630,13 @@ public partial class DockablePanel : UserControl
 				var wasActive = TabGroup.ActivePanel == panel;
 				if (wasActive)
 				{
+					var visualRoot = this.GetVisualRoot() as Visual;
+					if (visualRoot != null)
+					{
+						var pressPointRoot = e.GetPosition(visualRoot);
+						var panelPos = this.TranslatePoint(new Point(0,0), visualRoot);
+						Debug.WriteLine($"[TabPress] {panel.Title}: ACTIVE press={pressPointRoot} panelPos={panelPos?.ToString() ?? "null"}");
+					}
 					panel.BeginDragFromTab(e, border);
 				}
 				else
@@ -609,13 +644,14 @@ public partial class DockablePanel : UserControl
 					var visualRoot = this.GetVisualRoot() as Visual;
 					if (visualRoot == null) return;
 					var pressPointRoot = e.GetPosition(visualRoot);
+					var pressPointInBorder = e.GetPosition(border);
 					var pointer = e.Pointer;
 
 					TabGroup.SetActive(panel);
 					DockHost?.RebuildGrid();
 					Dispatcher.UIThread.InvokeAsync(() =>
 					{
-						panel.BeginDragAfterActivate(pressPointRoot, pointer);
+						panel.BeginDragAfterActivate(pressPointRoot, pointer, pressPointInBorder.X);
 					}, DispatcherPriority.Render);
 				}
 				e.Handled = true;
