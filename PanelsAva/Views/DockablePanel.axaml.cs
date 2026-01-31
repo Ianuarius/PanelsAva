@@ -16,6 +16,9 @@ public partial class DockablePanel : UserControl
 	public static readonly new StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
 	public static readonly StyledProperty<DockHost?> DockHostProperty = AvaloniaProperty.Register<DockablePanel, DockHost?>(nameof(DockHost));
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
+	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(IsFloating));
+
+	public event EventHandler? CloseRequested;
 
 	Border? titleBar;
 	bool isDragging;
@@ -27,17 +30,31 @@ public partial class DockablePanel : UserControl
 	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
 	Control? previewBorder;
+	Button? closeButton;
+	MenuItem? closeMenuItem;
 
 	public DockablePanel()
 	{
 		InitializeComponent();
+		DataContext = this;
 		titleBar = this.FindControl<Border>("TitleBar");
+		closeButton = this.FindControl<Button>("CloseButton");
+		if (closeButton != null)
+		{
+			closeButton.Click += CloseButtonOnClick;
+		}
 		if (titleBar != null)
 		{
 			titleBar.PointerPressed += TitleBarOnPointerPressed;
 			titleBar.PointerMoved += TitleBarOnPointerMoved;
 			titleBar.PointerReleased += TitleBarOnPointerReleased;
 			titleBar.PointerCaptureLost += TitleBarOnPointerCaptureLost;
+			// Initially docked, so set context menu
+			var contextMenu = new ContextMenu();
+			closeMenuItem = new MenuItem { Header = "Close" };
+			closeMenuItem.Click += CloseMenuItemOnClick;
+			contextMenu.Items.Add(closeMenuItem);
+			titleBar.ContextMenu = contextMenu;
 		}
 	}
 
@@ -65,9 +82,34 @@ public partial class DockablePanel : UserControl
 		set => SetValue(FloatingLayerProperty, value);
 	}
 
+	public bool IsFloating
+	{
+		get => GetValue(IsFloatingProperty);
+		set => SetValue(IsFloatingProperty, value);
+	}
+
 	public void SetFloating(bool floating)
 	{
 		isFloating = floating;
+		IsFloating = floating;
+		if (titleBar != null)
+		{
+			if (floating)
+			{
+				titleBar.ContextMenu = null;
+			}
+			else
+			{
+				if (titleBar.ContextMenu == null)
+				{
+					var contextMenu = new ContextMenu();
+					closeMenuItem = new MenuItem { Header = "Close" };
+					closeMenuItem.Click += CloseMenuItemOnClick;
+					contextMenu.Items.Add(closeMenuItem);
+					titleBar.ContextMenu = contextMenu;
+				}
+			}
+		}
 	}
 
 	protected override Size MeasureOverride(Size availableSize)
@@ -215,7 +257,7 @@ public partial class DockablePanel : UserControl
 			MoveToFloatingLayer(FloatingLayer, 0, 0);
 		}
 		
-		isFloating = true;
+		SetFloating(true);
 		currentPointer?.Capture(titleBar);
 		isTransitioningToFloat = false;
 	}
@@ -329,5 +371,15 @@ public partial class DockablePanel : UserControl
 		this.SetValue(Panel.ZIndexProperty, 1);
 		Canvas.SetLeft(this, left);
 		Canvas.SetTop(this, top);
+	}
+
+	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+	{
+		CloseRequested?.Invoke(this, EventArgs.Empty);
+	}
+
+	void CloseMenuItemOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+	{
+		CloseRequested?.Invoke(this, EventArgs.Empty);
 	}
 }

@@ -41,6 +41,7 @@ public partial class MainView : UserControl
 				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
+			layersPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockHost.AddPanel(layersPanel);
 
 			propertiesPanel = new DockablePanel
@@ -50,6 +51,7 @@ public partial class MainView : UserControl
 				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
+			propertiesPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockHost.AddPanel(propertiesPanel);
 
 			colorPanel = new DockablePanel
@@ -59,6 +61,7 @@ public partial class MainView : UserControl
 				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
+			colorPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockHost.AddPanel(colorPanel);
 
 			brushesPanel = new DockablePanel
@@ -68,6 +71,7 @@ public partial class MainView : UserControl
 				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
+			brushesPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockHost.AddPanel(brushesPanel);
 		}
 
@@ -80,6 +84,7 @@ public partial class MainView : UserControl
 				DockHost = rightDockHost,
 				FloatingLayer = floatingLayer
 			};
+			historyPanel.CloseRequested += OnPanelCloseRequested;
 			rightDockHost.AddPanel(historyPanel);
 		}
 
@@ -92,6 +97,7 @@ public partial class MainView : UserControl
 				DockHost = bottomDockHost,
 				FloatingLayer = floatingLayer
 			};
+			timelinePanel.CloseRequested += OnPanelCloseRequested;
 			bottomDockHost.AddPanel(timelinePanel);
 		}
 	}
@@ -176,6 +182,14 @@ public partial class MainView : UserControl
 		if (panel.Parent is ContentControl contentControl)
 		{
 			contentControl.Content = null;
+		}
+	}
+
+	void OnPanelCloseRequested(object? sender, EventArgs e)
+	{
+		if (sender is DockablePanel panel)
+		{
+			HidePanel(panel);
 		}
 	}
 

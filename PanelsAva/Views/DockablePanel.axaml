@@ -2,14 +2,27 @@
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:views="clr-namespace:PanelsAva.Views"
 			 x:Class="PanelsAva.Views.DockablePanel"
-			 MinHeight="50">
+			 MinHeight="50" Design.Width="200" Design.Height="150">
 	<Border Background="#2A2A2A" BorderBrush="#3A3A3A" BorderThickness="1">
 		<Grid RowDefinitions="28,*">
 			<Border x:Name="TitleBar" Background="#3A3A3A" Grid.Row="0" HorizontalAlignment="Stretch">
-				<TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}"
-						VerticalAlignment="Center"
-						HorizontalAlignment="Center"
-						Foreground="#FFFFFF" />
+				<Grid ColumnDefinitions="*,Auto">
+					<TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}"
+							VerticalAlignment="Center"
+							HorizontalAlignment="Center"
+							Foreground="#FFFFFF" />
+					<Button x:Name="CloseButton" Content="✖" FontSize="14" Padding="0" Width="20" Height="20" Margin="0,0,5,0" Grid.Column="1"
+							IsVisible="{Binding IsFloating}"
+							Background="Transparent" Foreground="#FFFFFF" BorderThickness="0">
+						<Button.Styles>
+							<Style Selector="Button:pointerover">
+								<Setter Property="Background" Value="#444444" />
+								<Setter Property="BorderThickness" Value="1" />
+								<Setter Property="BorderBrush" Value="#666666" />
+							</Style>
+						</Button.Styles>
+					</Button>
+				</Grid>
 			</Border>
 			<Border Grid.Row="1" Background="#222222">
 				<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}" />
