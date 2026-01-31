@@ -6,6 +6,17 @@ namespace PanelsAva.Views;
 
 public partial class MainView : UserControl
 {
+	DockHost? leftDockHost;
+	DockHost? rightDockHost;
+	DockHost? bottomDockHost;
+	Canvas? floatingLayer;
+	DockablePanel? layersPanel;
+	DockablePanel? propertiesPanel;
+	DockablePanel? colorPanel;
+	DockablePanel? brushesPanel;
+	DockablePanel? historyPanel;
+	DockablePanel? timelinePanel;
+
 	public MainView()
 	{
 		InitializeComponent();
@@ -14,14 +25,16 @@ public partial class MainView : UserControl
 
 	void OnLoaded(object? sender, EventArgs e)
 	{
-		var leftDockHost = this.FindControl<DockHost>("LeftDockHost");
-		var rightDockHost = this.FindControl<DockHost>("RightDockHost");
-		var bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
-		var floatingLayer = FindFloatingLayer();
+		leftDockHost = this.FindControl<DockHost>("LeftDockHost");
+		rightDockHost = this.FindControl<DockHost>("RightDockHost");
+		bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
+		floatingLayer = FindFloatingLayer();
+
+		if (layersPanel != null) return;
 		
 		if (leftDockHost != null && floatingLayer != null)
 		{
-			var layersPanel = new DockablePanel
+			layersPanel = new DockablePanel
 			{
 				Title = "Layers",
 				Content = new LayersPanel(),
@@ -30,7 +43,7 @@ public partial class MainView : UserControl
 			};
 			leftDockHost.AddPanel(layersPanel);
 
-			var propertiesPanel = new DockablePanel
+			propertiesPanel = new DockablePanel
 			{
 				Title = "Properties",
 				Content = new PropertiesPanel(),
@@ -39,7 +52,7 @@ public partial class MainView : UserControl
 			};
 			leftDockHost.AddPanel(propertiesPanel);
 
-			var colorPanel = new DockablePanel
+			colorPanel = new DockablePanel
 			{
 				Title = "Color",
 				Content = new ColorPanel(),
@@ -48,7 +61,7 @@ public partial class MainView : UserControl
 			};
 			leftDockHost.AddPanel(colorPanel);
 
-			var brushesPanel = new DockablePanel
+			brushesPanel = new DockablePanel
 			{
 				Title = "Brushes",
 				Content = new BrushesPanel(),
@@ -60,7 +73,7 @@ public partial class MainView : UserControl
 
 		if (rightDockHost != null && floatingLayer != null)
 		{
-			var historyPanel = new DockablePanel
+			historyPanel = new DockablePanel
 			{
 				Title = "History",
 				Content = new HistoryPanel(),
@@ -72,7 +85,7 @@ public partial class MainView : UserControl
 
 		if (bottomDockHost != null && floatingLayer != null)
 		{
-			var timelinePanel = new DockablePanel
+			timelinePanel = new DockablePanel
 			{
 				Title = "Timeline",
 				Content = new TimelinePanel(),
@@ -80,6 +93,105 @@ public partial class MainView : UserControl
 				FloatingLayer = floatingLayer
 			};
 			bottomDockHost.AddPanel(timelinePanel);
+		}
+	}
+
+	public bool ToggleLayersPanel()
+	{
+		return TogglePanel(layersPanel);
+	}
+
+	public bool TogglePropertiesPanel()
+	{
+		return TogglePanel(propertiesPanel);
+	}
+
+	public bool ToggleColorPanel()
+	{
+		return TogglePanel(colorPanel);
+	}
+
+	public bool ToggleBrushesPanel()
+	{
+		return TogglePanel(brushesPanel);
+	}
+
+	public bool ToggleHistoryPanel()
+	{
+		return TogglePanel(historyPanel);
+	}
+
+	public bool ToggleTimelinePanel()
+	{
+		return TogglePanel(timelinePanel);
+	}
+
+	public bool IsLayersPanelVisible => IsPanelVisible(layersPanel);
+	public bool IsPropertiesPanelVisible => IsPanelVisible(propertiesPanel);
+	public bool IsColorPanelVisible => IsPanelVisible(colorPanel);
+	public bool IsBrushesPanelVisible => IsPanelVisible(brushesPanel);
+	public bool IsHistoryPanelVisible => IsPanelVisible(historyPanel);
+	public bool IsTimelinePanelVisible => IsPanelVisible(timelinePanel);
+
+	bool TogglePanel(DockablePanel? panel)
+	{
+		if (panel == null) return false;
+		if (IsPanelVisible(panel))
+		{
+			HidePanel(panel);
+			return false;
+		}
+		ShowPanel(panel);
+		return true;
+	}
+
+	bool IsPanelVisible(DockablePanel? panel)
+	{
+		return panel != null && panel.Parent != null;
+	}
+
+	void HidePanel(DockablePanel? panel)
+	{
+		if (panel == null) return;
+		if (panel.DockHost != null && panel.Parent is Grid)
+		{
+			panel.DockHost.RemovePanel(panel);
+			return;
+		}
+		if (panel.Parent is DockHost host)
+		{
+			host.RemovePanel(panel);
+			return;
+		}
+		if (panel.Parent is Canvas canvas)
+		{
+			canvas.Children.Remove(panel);
+			return;
+		}
+		if (panel.Parent is Panel parentPanel)
+		{
+			parentPanel.Children.Remove(panel);
+			return;
+		}
+		if (panel.Parent is ContentControl contentControl)
+		{
+			contentControl.Content = null;
+		}
+	}
+
+	void ShowPanel(DockablePanel? panel)
+	{
+		if (panel == null) return;
+		if (panel.Parent != null) return;
+		var host = panel.DockHost;
+		if (host != null)
+		{
+			host.AddPanel(panel);
+			return;
+		}
+		if (floatingLayer != null)
+		{
+			floatingLayer.Children.Add(panel);
 		}
 	}
 

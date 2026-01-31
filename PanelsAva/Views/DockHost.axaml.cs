@@ -34,7 +34,8 @@ public partial class DockHost : UserControl
 
 	public void AddPanel(DockablePanel panel)
 	{
-		dockedPanels.Add(panel);
+		if (!dockedPanels.Contains(panel))
+			dockedPanels.Add(panel);
 		RebuildGrid();
 	}
 
@@ -168,9 +169,10 @@ public partial class DockHost : UserControl
 				colDef.MinWidth = 50;
 				panelsGrid.ColumnDefinitions.Add(colDef);
 				var panel = dockedPanels[i];
-				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
-				panelsGrid.Children.Add(panel);
 				ClearFloatingProperties(panel);
+				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
+				Grid.SetRow(panel, 0);
+				panelsGrid.Children.Add(panel);
 			}
 			else
 			{
@@ -178,13 +180,16 @@ public partial class DockHost : UserControl
 				rowDef.MinHeight = 50;
 				panelsGrid.RowDefinitions.Add(rowDef);
 				var panel = dockedPanels[i];
-				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
-				panelsGrid.Children.Add(panel);
 				ClearFloatingProperties(panel);
+				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
+				Grid.SetColumn(panel, 0);
+				panelsGrid.Children.Add(panel);
 			}
 		}
 		panelsGrid.InvalidateMeasure();
 		panelsGrid.InvalidateArrange();
+		this.InvalidateMeasure();
+		this.InvalidateArrange();
 	}
 
 	void ClearFloatingProperties(DockablePanel panel)
@@ -193,6 +198,8 @@ public partial class DockHost : UserControl
 		Canvas.SetTop(panel, double.NaN);
 		panel.SetValue(Panel.ZIndexProperty, 0);
 		panel.SetFloating(false);
+		panel.Width = double.NaN;
+		panel.Height = double.NaN;
 	}
 
 	static void RemoveFromParent(Control control)

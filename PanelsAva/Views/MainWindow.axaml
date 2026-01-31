@@ -7,8 +7,20 @@
 		x:Class="PanelsAva.Views.MainWindow"
 		Icon="/Assets/avalonia-logo.ico"
 		Title="PanelsAva">
-	<Grid>
-		<views:MainView />
-		<Canvas x:Name="FloatingLayer" Panel.ZIndex="10" />
-	</Grid>
+	<DockPanel>
+		<Menu DockPanel.Dock="Top">
+			<MenuItem Header="Window">
+				<MenuItem x:Name="LayersMenuItem" Header="Layers" IsChecked="True" Click="OnToggleLayers" />
+				<MenuItem x:Name="PropertiesMenuItem" Header="Properties" IsChecked="True" Click="OnToggleProperties" />
+				<MenuItem x:Name="ColorMenuItem" Header="Color" IsChecked="True" Click="OnToggleColor" />
+				<MenuItem x:Name="BrushesMenuItem" Header="Brushes" IsChecked="True" Click="OnToggleBrushes" />
+				<MenuItem x:Name="HistoryMenuItem" Header="History" IsChecked="True" Click="OnToggleHistory" />
+				<MenuItem x:Name="TimelineMenuItem" Header="Timeline" IsChecked="True" Click="OnToggleTimeline" />
+			</MenuItem>
+		</Menu>
+		<Grid>
+			<views:MainView x:Name="MainView" />
+			<Canvas x:Name="FloatingLayer" Panel.ZIndex="10" />
+		</Grid>
+	</DockPanel>
 </Window>
