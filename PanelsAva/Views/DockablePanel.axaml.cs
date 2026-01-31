@@ -32,6 +32,7 @@ public partial class DockablePanel : UserControl
 	double dragOffsetAbsoluteY;
 	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
+	Control? dragHandle;
 	Control? previewBorder;
 	DockablePanel? tabDropTarget;
 	Button? closeButton;
@@ -132,8 +133,27 @@ public partial class DockablePanel : UserControl
 	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (titleBar == null) return;
+		BeginDrag(titleBar, e);
+	}
 
-		var e2 = e.GetCurrentPoint(titleBar);
+	void TitleBarOnPointerMoved(object? sender, PointerEventArgs e)
+	{
+		ContinueDrag(e);
+	}
+
+	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		EndDrag(e);
+	}
+
+	void TitleBarOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		DragCaptureLost(e);
+	}
+
+	void BeginDrag(Control handle, PointerPressedEventArgs e)
+	{
+		var e2 = e.GetCurrentPoint(handle);
 		if (!e2.Properties.IsLeftButtonPressed) return;
 
 		var visualRoot = this.GetVisualRoot() as Visual;
@@ -141,7 +161,6 @@ public partial class DockablePanel : UserControl
 
 		pressPointRoot = e.GetPosition(visualRoot);
 
-		// Calculates the drag offset when the pointer is pressed on the title bar. Translates the panel's top-left corner to the visual root's (window) coordinate space, computes the difference from the press point, and stores a proportional X offset (relative to panel width) and absolute Y offset for smooth dragging in DockablePanel.
 		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
 		if (panelPos.HasValue)
 		{
@@ -153,12 +172,12 @@ public partial class DockablePanel : UserControl
 
 		isDragging = true;
 		currentPointer = (Pointer)e.Pointer;
-		// Ensures all subsequent pointer events (like move and release) are routed to titleBar during dragging, even if the pointer leaves the title bar area.
-		e.Pointer.Capture(titleBar);
+		dragHandle = handle;
+		e.Pointer.Capture(handle);
 		e.Handled = true;
 	}
 
-	void TitleBarOnPointerMoved(object? sender, PointerEventArgs e)
+	void ContinueDrag(PointerEventArgs e)
 	{
 		if (!isDragging) return;
 
@@ -188,13 +207,14 @@ public partial class DockablePanel : UserControl
 		e.Handled = true;
 	}
 
-	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	void EndDrag(PointerReleasedEventArgs e)
 	{
 		if (!isDragging) return;
 
 		isDragging = false;
 		currentPointer?.Capture(null);
 		currentPointer = null;
+		dragHandle = null;
 		e.Pointer.Capture(null);
 
 		var visualRoot = this.GetVisualRoot() as Visual;
@@ -208,6 +228,7 @@ public partial class DockablePanel : UserControl
 				var targetDockHost = tabDropTarget.DockHost;
 				if (targetDockHost != null)
 				{
+					SetFloating(false);
 					targetDockHost.DockAsTab(this, tabDropTarget);
 					DockHost = targetDockHost;
 				}
@@ -236,11 +257,12 @@ public partial class DockablePanel : UserControl
 		}
 	}
 
-	void TitleBarOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	void DragCaptureLost(PointerCaptureLostEventArgs e)
 	{
 		if (!isTransitioningToFloat)
 		{
 			currentPointer = null;
+			dragHandle = null;
 			isDragging = false;
 			
 			if (previewBorder != null)
@@ -249,6 +271,13 @@ public partial class DockablePanel : UserControl
 				previewBorder = null;
 			}
 		}
+	}
+
+	void BeginDragFromTab(PointerPressedEventArgs e)
+	{
+		var handle = (Control?)tabStrip ?? titleBar;
+		if (handle == null) return;
+		BeginDrag(handle, e);
 	}
 
 	void BeginFloating(Point posRoot, Visual visualRoot)
@@ -276,7 +305,7 @@ public partial class DockablePanel : UserControl
 		}
 		
 		SetFloating(true);
-		currentPointer?.Capture(titleBar);
+		currentPointer?.Capture(dragHandle ?? titleBar);
 		isTransitioningToFloat = false;
 	}
 
@@ -309,10 +338,25 @@ public partial class DockablePanel : UserControl
 		tabDropTarget = FindPanelAt(posRoot, visualRoot);
 		if (tabDropTarget != null)
 		{
-			if (previewBorder != null)
+			var targetTopLeft = tabDropTarget.TranslatePoint(new Point(0, 0), visualRoot);
+			var targetPos = tabDropTarget.TranslatePoint(new Point(0, 0), FloatingLayer);
+			if (targetTopLeft.HasValue && targetPos.HasValue)
 			{
-				FloatingLayer.Children.Remove(previewBorder);
-				previewBorder = null;
+				if (previewBorder == null)
+				{
+					previewBorder = new Border
+					{
+						Background = new SolidColorBrush(Colors.Blue),
+						Opacity = 0.5
+					};
+					previewBorder.SetValue(Panel.ZIndexProperty, 0);
+					FloatingLayer.Children.Add(previewBorder);
+				}
+
+				previewBorder.Width = tabDropTarget.Bounds.Width;
+				previewBorder.Height = tabDropTarget.Bounds.Height;
+				Canvas.SetLeft(previewBorder, targetPos.Value.X);
+				Canvas.SetTop(previewBorder, targetPos.Value.Y);
 			}
 			return;
 		}
@@ -382,36 +426,32 @@ public partial class DockablePanel : UserControl
 			if (p == this) continue;
 			if (p.isFloating) continue;
 
-			var titleBar = p.titleBar;
-			var tabStrip = p.tabStrip;
-
-			if (titleBar != null && titleBar.IsVisible)
+			var tabStripRect = GetTabStripRect(p, visualRoot);
+			if (tabStripRect.HasValue && tabStripRect.Value.Contains(posRoot))
 			{
-				var titleTopLeft = titleBar.TranslatePoint(new Point(0, 0), visualRoot);
-				if (titleTopLeft.HasValue)
-				{
-					var titleRect = new Rect(titleTopLeft.Value, titleBar.Bounds.Size);
-					if (titleRect.Contains(posRoot))
-					{
-						return p;
-					}
-				}
-			}
-
-			if (tabStrip != null && tabStrip.IsVisible)
-			{
-				var stripTopLeft = tabStrip.TranslatePoint(new Point(0, 0), visualRoot);
-				if (stripTopLeft.HasValue)
-				{
-					var stripRect = new Rect(stripTopLeft.Value, tabStrip.Bounds.Size);
-					if (stripRect.Contains(posRoot))
-					{
-						return p;
-					}
-				}
+				return p;
 			}
 		}
 		return null;
+	}
+
+	Rect? GetTabStripRect(DockablePanel panel, Visual visualRoot)
+	{
+		var panelTopLeft = panel.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!panelTopLeft.HasValue) return null;
+
+		double height = 0;
+		if (panel.tabStrip != null && panel.tabStrip.Bounds.Height > 0)
+			height = panel.tabStrip.Bounds.Height;
+		else if (panel.titleBar != null && panel.titleBar.Bounds.Height > 0)
+			height = panel.titleBar.Bounds.Height;
+		else
+			height = 18;
+
+		var width = panel.Bounds.Width;
+		if (width <= 0 || height <= 0) return null;
+
+		return new Rect(panelTopLeft.Value.X, panelTopLeft.Value.Y, width, height);
 	}
 
 	static void RemoveFromParent(Control control)
@@ -515,6 +555,9 @@ public partial class DockablePanel : UserControl
 			tabBorder.Child = tabGrid;
 
 			tabBorder.PointerPressed += TabOnPointerPressed;
+			tabBorder.PointerMoved += TabOnPointerMoved;
+			tabBorder.PointerReleased += TabOnPointerReleased;
+			tabBorder.PointerCaptureLost += TabOnPointerCaptureLost;
 			tabCloseButton.Click += TabCloseButtonOnClick;
 
 			tabStrip.Children.Add(tabBorder);
@@ -530,9 +573,25 @@ public partial class DockablePanel : UserControl
 			{
 				TabGroup.SetActive(panel);
 				DockHost?.RebuildGrid();
+				panel.BeginDragFromTab(e);
 				e.Handled = true;
 			}
 		}
+	}
+
+	void TabOnPointerMoved(object? sender, PointerEventArgs e)
+	{
+		ContinueDrag(e);
+	}
+
+	void TabOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		EndDrag(e);
+	}
+
+	void TabOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		DragCaptureLost(e);
 	}
 
 	void TabCloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

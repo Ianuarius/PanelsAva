@@ -15,7 +15,7 @@
 - Do not create new folders Models/, Views/, ViewModels/, Services/, Controls/ etc. Files are organized into folders based on application feature, NOT class type.
 - Put related classes into same file. E.g. BrushTool, BrushStamp, and BrushService can be in the same file, since they are so closely related.
 - Declare namespace on a single line, NOT as a block.
-- Do not try to build or run the project. I'll do that myself.
+- To build: Stop-Process -Id 9620 -Force dotnet build "e:\Projects\Visual Studio\PanelsAva\PanelsAva.sln" --no-incremental
 - When "Agent" mode is selected in the chat, use agent to implement discussed features into the codebase.
 - DO NOT POST code in the chat!
 - Don't worry about compile errors. The code is not compiled in VSCode.
@@ -25,7 +25,6 @@
 - Add using Windows.UI; using Microsoft.UI; if using eg. Colors.Transparent.
 - Default layer type is always Tile Layer, NOT FreePaintLayer.
 - Remember to consider DPI scaling if necessary.
-- To build: Stop-Process -Id 9620 -Force dotnet build "e:\Projects\Visual Studio\PanelsAva\PanelsAva.sln" --no-incremental
 - If using debug prints, never print on mouse move events or every tick or something that spams the output full of garbage.
 
 ## Project Overview

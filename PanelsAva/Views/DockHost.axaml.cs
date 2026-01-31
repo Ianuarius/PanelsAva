@@ -295,6 +295,12 @@ public partial class DockHost : UserControl
 			}
 			else if (dockedItems[i] is TabGroup tabGroup)
 			{
+				for (int j = 0; j < tabGroup.Panels.Count; j++)
+				{
+					var panelToClear = tabGroup.Panels[j];
+					panelToClear.SetFloating(false);
+				}
+
 				var activePanel = tabGroup.ActivePanel;
 				if (activePanel != null)
 				{
