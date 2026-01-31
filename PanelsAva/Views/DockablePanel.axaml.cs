@@ -20,7 +20,8 @@ public partial class DockablePanel : UserControl
 	bool isFloating;
 	bool isTransitioningToFloat;
 	Point pressPointRoot;
-	Point dragOffsetRatio;
+	double dragOffsetRatioX;
+	double dragOffsetAbsoluteY;
 	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
 	bool wasOverDockHost;
@@ -93,10 +94,8 @@ public partial class DockablePanel : UserControl
 		{
 			panelPosAtPressRoot = panelPos.Value;
 			var dragOffset = pressPointRoot - panelPosAtPressRoot;
-			dragOffsetRatio = new Point(
-				this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0,
-				this.Bounds.Height > 0 ? dragOffset.Y / this.Bounds.Height : 0
-			);
+			dragOffsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
+			dragOffsetAbsoluteY = dragOffset.Y;
 		}
 
 		isDragging = true;
@@ -238,8 +237,8 @@ public partial class DockablePanel : UserControl
 		}
 
 		var currentDragOffset = new Point(
-			this.Bounds.Width * dragOffsetRatio.X,
-			this.Bounds.Height * dragOffsetRatio.Y
+			this.Bounds.Width * dragOffsetRatioX,
+			dragOffsetAbsoluteY
 		);
 		
 		var posInFloatingLayer = posRoot - floatingLayerPos.Value;
