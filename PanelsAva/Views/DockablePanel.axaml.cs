@@ -79,7 +79,7 @@ public partial class DockablePanel : UserControl
 			var height = double.IsInfinity(availableSize.Height) ? Math.Max(size.Height, 120) : size.Height;
 			return new Size(width, height);
 		}
-		return size;
+		return availableSize;
 	}
 
 	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)

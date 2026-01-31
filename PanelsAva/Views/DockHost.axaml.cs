@@ -169,10 +169,9 @@ public partial class DockHost : UserControl
 				colDef.MinWidth = 50;
 				panelsGrid.ColumnDefinitions.Add(colDef);
 				var panel = dockedPanels[i];
-				ClearFloatingProperties(panel);
 				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
-				Grid.SetRow(panel, 0);
 				panelsGrid.Children.Add(panel);
+				ClearFloatingProperties(panel);
 			}
 			else
 			{
@@ -180,10 +179,9 @@ public partial class DockHost : UserControl
 				rowDef.MinHeight = 50;
 				panelsGrid.RowDefinitions.Add(rowDef);
 				var panel = dockedPanels[i];
-				ClearFloatingProperties(panel);
 				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
-				Grid.SetColumn(panel, 0);
 				panelsGrid.Children.Add(panel);
+				ClearFloatingProperties(panel);
 			}
 		}
 		panelsGrid.InvalidateMeasure();
@@ -198,8 +196,6 @@ public partial class DockHost : UserControl
 		Canvas.SetTop(panel, double.NaN);
 		panel.SetValue(Panel.ZIndexProperty, 0);
 		panel.SetFloating(false);
-		panel.Width = double.NaN;
-		panel.Height = double.NaN;
 	}
 
 	static void RemoveFromParent(Control control)
