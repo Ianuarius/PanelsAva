@@ -20,7 +20,8 @@ public partial class DockablePanel : UserControl
 	bool isFloating;
 	bool isTransitioningToFloat;
 	Point pressPointRoot;
-	Point dragOffset;
+	Point dragOffsetRatio;
+	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
 	bool wasOverDockHost;
 	Control? previewBorder;
@@ -87,14 +88,19 @@ public partial class DockablePanel : UserControl
 		}
 
 		pressPointRoot = e.GetPosition(visualRoot);
-		var topLeft = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (topLeft.HasValue)
+		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+		if (panelPos.HasValue)
 		{
-			dragOffset = pressPointRoot - topLeft.Value;
+			panelPosAtPressRoot = panelPos.Value;
+			var dragOffset = pressPointRoot - panelPosAtPressRoot;
+			dragOffsetRatio = new Point(
+				this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0,
+				this.Bounds.Height > 0 ? dragOffset.Y / this.Bounds.Height : 0
+			);
 		}
 
 		isDragging = true;
-		wasOverDockHost = false; // Reset for new drag session
+		wasOverDockHost = false;
 		currentPointer = (Pointer)e.Pointer;
 		e.Pointer.Capture(titleBar);
 		e.Handled = true;
@@ -192,14 +198,21 @@ public partial class DockablePanel : UserControl
 			return;
 		}
 
-		var topLeft = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (topLeft.HasValue)
-		{
-			dragOffset = posRoot - topLeft.Value;
-		}
-
 		isTransitioningToFloat = true;
-		MoveToFloatingLayer(FloatingLayer, posRoot.X - dragOffset.X, posRoot.Y - dragOffset.Y);
+		
+		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
+		var floatingLayerPosInRoot = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
+		
+		if (panelPosInRoot.HasValue && floatingLayerPosInRoot.HasValue)
+		{
+			var panelPosInFloatingLayer = panelPosInRoot.Value - floatingLayerPosInRoot.Value;
+			MoveToFloatingLayer(FloatingLayer, panelPosInFloatingLayer.X, panelPosInFloatingLayer.Y);
+		}
+		else
+		{
+			MoveToFloatingLayer(FloatingLayer, 0, 0);
+		}
+		
 		isFloating = true;
 		currentPointer?.Capture(titleBar);
 		isTransitioningToFloat = false;
@@ -212,10 +225,28 @@ public partial class DockablePanel : UserControl
 			return;
 		}
 
-		var left = posRoot.X - dragOffset.X;
-		var top = posRoot.Y - dragOffset.Y;
-		Canvas.SetLeft(this, left);
-		Canvas.SetTop(this, top);
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null)
+		{
+			return;
+		}
+
+		var floatingLayerPos = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!floatingLayerPos.HasValue)
+		{
+			return;
+		}
+
+		var currentDragOffset = new Point(
+			this.Bounds.Width * dragOffsetRatio.X,
+			this.Bounds.Height * dragOffsetRatio.Y
+		);
+		
+		var posInFloatingLayer = posRoot - floatingLayerPos.Value;
+		var panelPos = posInFloatingLayer - currentDragOffset;
+		
+		Canvas.SetLeft(this, panelPos.X);
+		Canvas.SetTop(this, panelPos.Y);
 	}
 
 	void UpdateDockPreview(Point posRoot, Visual visualRoot)
