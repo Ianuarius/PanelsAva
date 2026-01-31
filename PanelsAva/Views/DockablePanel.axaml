@@ -11,10 +11,7 @@
 						Foreground="#FFFFFF" />
 			</Border>
 			<Border Grid.Row="1" Background="#222222">
-				<TextBlock Text="{Binding Placeholder, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}"
-						VerticalAlignment="Center"
-						HorizontalAlignment="Center"
-						Foreground="#B0B0B0" />
+				<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}" />
 			</Border>
 		</Grid>
 	</Border>

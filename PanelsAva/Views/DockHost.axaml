@@ -3,5 +3,5 @@
 			 xmlns:views="clr-namespace:PanelsAva.Views"
 			 x:Class="PanelsAva.Views.DockHost"
 			 Background="#202020">
-	<ContentPresenter />
+	<Grid x:Name="PanelsGrid" />
 </UserControl>

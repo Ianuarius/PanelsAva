@@ -12,7 +12,7 @@ namespace PanelsAva.Views;
 public partial class DockablePanel : UserControl
 {
 	public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<DockablePanel, string>(nameof(Title), "Panel");
-	public static readonly StyledProperty<string> PlaceholderProperty = AvaloniaProperty.Register<DockablePanel, string>(nameof(Placeholder), "Placeholder");
+	public static readonly StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
 	public static readonly StyledProperty<DockHost?> DockHostProperty = AvaloniaProperty.Register<DockablePanel, DockHost?>(nameof(DockHost));
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
 
@@ -47,10 +47,10 @@ public partial class DockablePanel : UserControl
 		set => SetValue(TitleProperty, value);
 	}
 
-	public string Placeholder
+	public object? Content
 	{
-		get => GetValue(PlaceholderProperty);
-		set => SetValue(PlaceholderProperty, value);
+		get => GetValue(ContentProperty);
+		set => SetValue(ContentProperty, value);
 	}
 
 	public DockHost? DockHost
@@ -155,7 +155,15 @@ public partial class DockablePanel : UserControl
 		if (visualRoot == null) return;
 
 		var posRoot = e.GetPosition(visualRoot);
-		if (isFloating && DockHost != null && IsOverDockHost(posRoot, visualRoot)) DockHost.Dock(this);
+		if (isFloating && DockHost != null && IsOverDockHost(posRoot, visualRoot))
+		{
+			var posInDockHost = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
+			if (posInDockHost.HasValue)
+			{
+				var relativePos = posRoot - posInDockHost.Value;
+				DockHost.Dock(this, relativePos);
+			}
+		}
 
 		if (previewBorder != null)
 		{

@@ -11,7 +11,8 @@
 		<vm:MainViewModel />
 	</Design.DataContext>
 
-	<Grid Background="#101010">
-		<TextBlock Text="MainView placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#CCCCCC" />
+	<Grid ColumnDefinitions="260,*">
+		<views:DockHost x:Name="LeftDockHost" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<Border Grid.Column="1" Background="#1C1C1C" />
 	</Grid>
 </UserControl>
