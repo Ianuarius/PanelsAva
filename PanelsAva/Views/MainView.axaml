@@ -11,8 +11,10 @@
 		<vm:MainViewModel />
 	</Design.DataContext>
 
-	<Grid ColumnDefinitions="260,*">
-		<views:DockHost x:Name="LeftDockHost" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-		<Border Grid.Column="1" Background="#1C1C1C" />
+	<Grid RowDefinitions="*,Auto" ColumnDefinitions="260,*,260">
+		<views:DockHost x:Name="LeftDockHost" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<Border Grid.Row="0" Grid.Column="1" Background="#1C1C1C" />
+		<views:DockHost x:Name="RightDockHost" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<views:DockHost x:Name="BottomDockHost" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHorizontal="True" MinHeight="150" />
 	</Grid>
 </UserControl>

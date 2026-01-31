@@ -14,28 +14,72 @@ public partial class MainView : UserControl
 
 	void OnLoaded(object? sender, EventArgs e)
 	{
-		var dockHost = this.FindControl<DockHost>("LeftDockHost");
+		var leftDockHost = this.FindControl<DockHost>("LeftDockHost");
+		var rightDockHost = this.FindControl<DockHost>("RightDockHost");
+		var bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
 		var floatingLayer = FindFloatingLayer();
 		
-		if (dockHost != null && floatingLayer != null)
+		if (leftDockHost != null && floatingLayer != null)
 		{
 			var layersPanel = new DockablePanel
 			{
 				Title = "Layers",
 				Content = new LayersPanel(),
-				DockHost = dockHost,
+				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
-			dockHost.AddPanel(layersPanel);
+			leftDockHost.AddPanel(layersPanel);
 
 			var propertiesPanel = new DockablePanel
 			{
 				Title = "Properties",
 				Content = new PropertiesPanel(),
-				DockHost = dockHost,
+				DockHost = leftDockHost,
 				FloatingLayer = floatingLayer
 			};
-			dockHost.AddPanel(propertiesPanel);
+			leftDockHost.AddPanel(propertiesPanel);
+
+			var colorPanel = new DockablePanel
+			{
+				Title = "Color",
+				Content = new ColorPanel(),
+				DockHost = leftDockHost,
+				FloatingLayer = floatingLayer
+			};
+			leftDockHost.AddPanel(colorPanel);
+
+			var brushesPanel = new DockablePanel
+			{
+				Title = "Brushes",
+				Content = new BrushesPanel(),
+				DockHost = leftDockHost,
+				FloatingLayer = floatingLayer
+			};
+			leftDockHost.AddPanel(brushesPanel);
+		}
+
+		if (rightDockHost != null && floatingLayer != null)
+		{
+			var historyPanel = new DockablePanel
+			{
+				Title = "History",
+				Content = new HistoryPanel(),
+				DockHost = rightDockHost,
+				FloatingLayer = floatingLayer
+			};
+			rightDockHost.AddPanel(historyPanel);
+		}
+
+		if (bottomDockHost != null && floatingLayer != null)
+		{
+			var timelinePanel = new DockablePanel
+			{
+				Title = "Timeline",
+				Content = new TimelinePanel(),
+				DockHost = bottomDockHost,
+				FloatingLayer = floatingLayer
+			};
+			bottomDockHost.AddPanel(timelinePanel);
 		}
 	}
 

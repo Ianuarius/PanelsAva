@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Rendering;
 using System;
+using System.Linq;
 
 namespace PanelsAva.Views;
 
@@ -25,7 +26,6 @@ public partial class DockablePanel : UserControl
 	double dragOffsetAbsoluteY;
 	Point panelPosAtPressRoot;
 	Pointer? currentPointer;
-	bool wasOverDockHost;
 	Control? previewBorder;
 
 	public DockablePanel()
@@ -105,7 +105,6 @@ public partial class DockablePanel : UserControl
 		}
 
 		isDragging = true;
-		wasOverDockHost = false;
 		currentPointer = (Pointer)e.Pointer;
 		// Ensures all subsequent pointer events (like move and release) are routed to titleBar during dragging, even if the pointer leaves the title bar area.
 		e.Pointer.Capture(titleBar);
@@ -155,13 +154,18 @@ public partial class DockablePanel : UserControl
 		if (visualRoot == null) return;
 
 		var posRoot = e.GetPosition(visualRoot);
-		if (isFloating && DockHost != null && IsOverDockHost(posRoot, visualRoot))
+		if (isFloating)
 		{
-			var posInDockHost = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
-			if (posInDockHost.HasValue)
+			var targetDockHost = FindDockHostAt(posRoot, visualRoot);
+			if (targetDockHost != null)
 			{
-				var relativePos = posRoot - posInDockHost.Value;
-				DockHost.Dock(this, relativePos);
+				var posInDockHost = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
+				if (posInDockHost.HasValue)
+				{
+					var relativePos = posRoot - posInDockHost.Value;
+					targetDockHost.Dock(this, relativePos);
+					DockHost = targetDockHost; // Update the associated DockHost
+				}
 			}
 		}
 
@@ -240,19 +244,17 @@ public partial class DockablePanel : UserControl
 
 	void UpdateDockPreview(Point posRoot, Visual visualRoot)
 	{
-		if (DockHost == null || FloatingLayer == null) return;
+		if (FloatingLayer == null) return;
 
-		var isOver = IsOverDockHost(posRoot, visualRoot);
-		if (isOver != wasOverDockHost) wasOverDockHost = isOver;
-
-		if (isOver)
+		var targetDockHost = FindDockHostAt(posRoot, visualRoot);
+		if (targetDockHost != null)
 		{
-			var dockTopLeft = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
-			var dockPos = DockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
+			var dockTopLeft = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
+			var dockPos = targetDockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
 			if (dockTopLeft.HasValue && dockPos.HasValue)
 			{
 				var relativePos = posRoot - dockTopLeft.Value;
-				var previewRect = DockHost.GetDockPreviewRect(relativePos);
+				var previewRect = targetDockHost.GetDockPreviewRect(relativePos);
 				if (previewRect.Width > 0 && previewRect.Height > 0)
 				{
 					if (previewBorder == null)
@@ -283,16 +285,22 @@ public partial class DockablePanel : UserControl
 		}
 	}
 
-	bool IsOverDockHost(Point posRoot, Visual visualRoot)
+	DockHost? FindDockHostAt(Point posRoot, Visual visualRoot)
 	{
-		if (DockHost == null) return false;
-
-		var dockTopLeft = DockHost.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!dockTopLeft.HasValue) return false;
-
-		var dockRect = new Rect(dockTopLeft.Value, DockHost.Bounds.Size);
-		var contains = dockRect.Contains(posRoot);
-		return contains;
+		var dockHosts = visualRoot.GetVisualDescendants().OfType<DockHost>();
+		foreach (var dh in dockHosts)
+		{
+			var dockTopLeft = dh.TranslatePoint(new Point(0, 0), visualRoot);
+			if (dockTopLeft.HasValue)
+			{
+				var dockRect = new Rect(dockTopLeft.Value, dh.Bounds.Size);
+				if (dockRect.Contains(posRoot))
+				{
+					return dh;
+				}
+			}
+		}
+		return null;
 	}
 
 	static void RemoveFromParent(Control control)

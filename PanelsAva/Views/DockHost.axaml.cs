@@ -12,6 +12,14 @@ public partial class DockHost : UserControl
 	Grid? panelsGrid;
 	List<DockablePanel> dockedPanels = new();
 
+	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockHost, bool>(nameof(IsHorizontal), false);
+
+	public bool IsHorizontal
+	{
+		get => GetValue(IsHorizontalProperty);
+		set => SetValue(IsHorizontalProperty, value);
+	}
+
 	public DockHost()
 	{
 		InitializeComponent();
@@ -44,31 +52,24 @@ public partial class DockHost : UserControl
 
 	public Rect GetDockPreviewRect(Point positionInHost)
 	{
-		if (dockedPanels.Count == 0)
+		int targetIndex = FindTargetIndex(positionInHost);
+		int newCount = dockedPanels.Count + 1;
+		int splitterCount = newCount - 1;
+		double splitterSize = 4;
+		double totalSplitterSize = splitterCount * splitterSize;
+		double availableSize = IsHorizontal ? Bounds.Width - totalSplitterSize : Bounds.Height - totalSplitterSize;
+		if (availableSize <= 0) availableSize = IsHorizontal ? Bounds.Width : Bounds.Height;
+		double panelSize = availableSize / newCount;
+		if (IsHorizontal)
 		{
-			return new Rect(0, 0, Bounds.Width, Bounds.Height);
+			double x = targetIndex * (panelSize + splitterSize);
+			return new Rect(x, 0, panelSize, Bounds.Height);
 		}
-
-		var panelRects = GetPanelRectsInHost();
-		if (panelRects.Count == 0)
+		else
 		{
-			return new Rect(0, 0, Bounds.Width, Bounds.Height);
+			double y = targetIndex * (panelSize + splitterSize);
+			return new Rect(0, y, Bounds.Width, panelSize);
 		}
-
-		for (int i = 0; i < panelRects.Count; i++)
-		{
-			var rect = panelRects[i];
-			var midY = rect.Y + rect.Height * 0.5;
-			if (positionInHost.Y < midY)
-			{
-				var height = rect.Height * 0.5;
-				return new Rect(0, rect.Y, Bounds.Width, height);
-			}
-		}
-
-		var lastRect = panelRects[panelRects.Count - 1];
-		var lastHeight = lastRect.Height * 0.5;
-		return new Rect(0, lastRect.Y + lastRect.Height - lastHeight, Bounds.Width, lastHeight);
 	}
 
 	int FindTargetIndex(Point positionInHost)
@@ -79,10 +80,21 @@ public partial class DockHost : UserControl
 		for (int i = 0; i < panelRects.Count; i++)
 		{
 			var rect = panelRects[i];
-			var midY = rect.Y + rect.Height * 0.5;
-			if (positionInHost.Y < midY)
+			if (IsHorizontal)
 			{
-				return i;
+				var midX = rect.X + rect.Width * 0.5;
+				if (positionInHost.X < midX)
+				{
+					return i;
+				}
+			}
+			else
+			{
+				var midY = rect.Y + rect.Height * 0.5;
+				if (positionInHost.Y < midY)
+				{
+					return i;
+				}
 			}
 		}
 
@@ -109,28 +121,63 @@ public partial class DockHost : UserControl
 		if (panelsGrid == null) return;
 
 		panelsGrid.Children.Clear();
-		panelsGrid.RowDefinitions.Clear();
+		if (IsHorizontal)
+		{
+			panelsGrid.ColumnDefinitions.Clear();
+			panelsGrid.RowDefinitions.Clear();
+		}
+		else
+		{
+			panelsGrid.RowDefinitions.Clear();
+			panelsGrid.ColumnDefinitions.Clear();
+		}
 
 		for (int i = 0; i < dockedPanels.Count; i++)
 		{
 			if (i > 0)
 			{
-				panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
-				var splitter = new GridSplitter
+				if (IsHorizontal)
 				{
-					Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
-					ResizeDirection = GridResizeDirection.Rows,
-					Height = 4
-				};
-				Grid.SetRow(splitter, panelsGrid.RowDefinitions.Count - 1);
-				panelsGrid.Children.Add(splitter);
+					panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(4, GridUnitType.Pixel));
+					var splitter = new GridSplitter
+					{
+						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+						ResizeDirection = GridResizeDirection.Columns,
+						Width = 4
+					};
+					Grid.SetColumn(splitter, panelsGrid.ColumnDefinitions.Count - 1);
+					panelsGrid.Children.Add(splitter);
+				}
+				else
+				{
+					panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
+					var splitter = new GridSplitter
+					{
+						Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+						ResizeDirection = GridResizeDirection.Rows,
+						Height = 4
+					};
+					Grid.SetRow(splitter, panelsGrid.RowDefinitions.Count - 1);
+					panelsGrid.Children.Add(splitter);
+				}
 			}
 
-			panelsGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
-			var panel = dockedPanels[i];
-			Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
-			panelsGrid.Children.Add(panel);
-			ClearFloatingProperties(panel);
+			if (IsHorizontal)
+			{
+				panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+				var panel = dockedPanels[i];
+				Grid.SetColumn(panel, panelsGrid.ColumnDefinitions.Count - 1);
+				panelsGrid.Children.Add(panel);
+				ClearFloatingProperties(panel);
+			}
+			else
+			{
+				panelsGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+				var panel = dockedPanels[i];
+				Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
+				panelsGrid.Children.Add(panel);
+				ClearFloatingProperties(panel);
+			}
 		}
 		panelsGrid.InvalidateMeasure();
 		panelsGrid.InvalidateArrange();
