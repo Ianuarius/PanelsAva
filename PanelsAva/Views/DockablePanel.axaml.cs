@@ -12,7 +12,7 @@ namespace PanelsAva.Views;
 public partial class DockablePanel : UserControl
 {
 	public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<DockablePanel, string>(nameof(Title), "Panel");
-	public static readonly StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
+	public static readonly new StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
 	public static readonly StyledProperty<DockHost?> DockHostProperty = AvaloniaProperty.Register<DockablePanel, DockHost?>(nameof(DockHost));
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
 
@@ -47,7 +47,7 @@ public partial class DockablePanel : UserControl
 		set => SetValue(TitleProperty, value);
 	}
 
-	public object? Content
+	public new object? Content
 	{
 		get => GetValue(ContentProperty);
 		set => SetValue(ContentProperty, value);
@@ -192,6 +192,11 @@ public partial class DockablePanel : UserControl
 		if (FloatingLayer == null) return;
 
 		isTransitioningToFloat = true;
+		
+		if (DockHost != null)
+		{
+			DockHost.RemovePanel(this);
+		}
 		
 		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
 		var floatingLayerPosInRoot = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);

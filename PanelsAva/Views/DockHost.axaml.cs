@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using Avalonia.VisualTree;
 
 namespace PanelsAva.Views;
@@ -9,6 +10,7 @@ namespace PanelsAva.Views;
 public partial class DockHost : UserControl
 {
 	Grid? panelsGrid;
+	List<DockablePanel> dockedPanels = new();
 
 	public DockHost()
 	{
@@ -16,30 +18,16 @@ public partial class DockHost : UserControl
 		panelsGrid = this.FindControl<Grid>("PanelsGrid");
 	}
 
+	public void RemovePanel(DockablePanel panel)
+	{
+		dockedPanels.Remove(panel);
+		RebuildGrid();
+	}
+
 	public void AddPanel(DockablePanel panel)
 	{
-		if (panelsGrid == null) return;
-
-		var rowCount = panelsGrid.RowDefinitions.Count / 2;
-		var newRowIndex = rowCount * 2;
-
-		if (rowCount > 0)
-		{
-			panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
-			var splitter = new GridSplitter
-			{
-				Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
-				ResizeDirection = GridResizeDirection.Rows,
-				Height = 4
-			};
-			Grid.SetRow(splitter, newRowIndex - 1);
-			panelsGrid.Children.Add(splitter);
-		}
-
-		panelsGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
-		Grid.SetRow(panel, newRowIndex);
-		panelsGrid.Children.Add(panel);
-		panel.SetFloating(false);
+		dockedPanels.Add(panel);
+		RebuildGrid();
 	}
 
 	public void Dock(DockablePanel panel, Point positionInHost)
@@ -48,76 +36,71 @@ public partial class DockHost : UserControl
 
 		RemoveFromParent(panel);
 
-		var targetRow = FindTargetRow(positionInHost);
-		if (targetRow >= 0)
-		{
-			InsertPanelAtRow(panel, targetRow);
-		}
-		else
-		{
-			AddPanel(panel);
-		}
+		var targetIndex = FindTargetIndex(positionInHost);
+		dockedPanels.Insert(targetIndex, panel);
+		RebuildGrid();
 	}
 
-	int FindTargetRow(Point positionInHost)
+	int FindTargetIndex(Point positionInHost)
 	{
-		if (panelsGrid == null) return -1;
+		var panelCount = dockedPanels.Count;
+		if (panelCount == 0) return 0;
 
+		var totalHeight = Bounds.Height;
+		if (totalHeight <= 0) return 0;
+
+		var panelHeight = totalHeight / panelCount;
 		double cumulativeY = 0;
-		for (int i = 0; i < panelsGrid.RowDefinitions.Count; i += 2)
+
+		for (int i = 0; i < panelCount; i++)
 		{
-			var rowDef = panelsGrid.RowDefinitions[i];
-			var panelInRow = panelsGrid.Children.FirstOrDefault(c => Grid.GetRow(c) == i) as DockablePanel;
-			if (panelInRow == null) continue;
-
-			var rowHeight = panelInRow.Bounds.Height;
-			cumulativeY += rowHeight;
-
+			cumulativeY += panelHeight;
 			if (positionInHost.Y < cumulativeY)
 			{
-				if (positionInHost.Y < cumulativeY - rowHeight / 2)
-					return i;
-				else
-					return i + 2;
+				return i;
 			}
-
-			if (i + 1 < panelsGrid.RowDefinitions.Count)
-				cumulativeY += 4;
 		}
 
-		return -1;
+		return panelCount; // append at end
 	}
 
-	void InsertPanelAtRow(DockablePanel panel, int targetRow)
+	void RebuildGrid()
 	{
 		if (panelsGrid == null) return;
 
-		for (int i = panelsGrid.Children.Count - 1; i >= 0; i--)
+		panelsGrid.Children.Clear();
+		panelsGrid.RowDefinitions.Clear();
+
+		for (int i = 0; i < dockedPanels.Count; i++)
 		{
-			var child = panelsGrid.Children[i];
-			var currentRow = Grid.GetRow(child);
-			if (currentRow >= targetRow)
+			if (i > 0)
 			{
-				Grid.SetRow(child, currentRow + 2);
+				panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
+				var splitter = new GridSplitter
+				{
+					Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+					ResizeDirection = GridResizeDirection.Rows,
+					Height = 4
+				};
+				Grid.SetRow(splitter, panelsGrid.RowDefinitions.Count - 1);
+				panelsGrid.Children.Add(splitter);
 			}
-		}
 
-		if (targetRow > 0)
-		{
-			panelsGrid.RowDefinitions.Insert(targetRow, new RowDefinition(4, GridUnitType.Pixel));
-			var splitter = new GridSplitter
-			{
-				Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
-				ResizeDirection = GridResizeDirection.Rows,
-				Height = 4
-			};
-			Grid.SetRow(splitter, targetRow - 1);
-			panelsGrid.Children.Add(splitter);
+			panelsGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+			var panel = dockedPanels[i];
+			Grid.SetRow(panel, panelsGrid.RowDefinitions.Count - 1);
+			panelsGrid.Children.Add(panel);
+			ClearFloatingProperties(panel);
 		}
+		panelsGrid.InvalidateMeasure();
+		panelsGrid.InvalidateArrange();
+	}
 
-		panelsGrid.RowDefinitions.Insert(targetRow, new RowDefinition(1, GridUnitType.Star));
-		Grid.SetRow(panel, targetRow);
-		panelsGrid.Children.Add(panel);
+	void ClearFloatingProperties(DockablePanel panel)
+	{
+		Canvas.SetLeft(panel, double.NaN);
+		Canvas.SetTop(panel, double.NaN);
+		panel.SetValue(Panel.ZIndexProperty, 0);
 		panel.SetFloating(false);
 	}
 
