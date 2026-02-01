@@ -9,8 +9,9 @@ Dockable Photoshop-style panels (palettes) for Avalonia applications.
 Features
 --------
 - Dockable, floatable panels and hosts similar to Photoshop palettes.
+- File tabs that can be dragged out to float like panels, with the canvas displayed in floating windows.
 - Simple MVVM-friendly structure: Views + ViewModels provided.
-- Example panels included (Layers, Brushes, Color, History, Properties, Timeline).
+- Example panels included (Layers, Brushes, Color, History, Properties, Timeline). Placeholder content reacts to selected file.
 
 Quick start
 -----------
@@ -63,7 +64,6 @@ TODO
 - Saving and loading Workspaces.
 - Saving/loading where the panel was closed.
 - Dockable toolbar.
-- File tabs.
 
 License
 -------
