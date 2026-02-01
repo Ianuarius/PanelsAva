@@ -17,6 +17,22 @@ public partial class MainView : UserControl
 	DockHost? leftDockHost;
 	DockHost? rightDockHost;
 	DockHost? bottomDockHost;
+	Grid? mainGrid;
+	GridSplitter? leftDockSplitter;
+	GridSplitter? rightDockSplitter;
+	GridSplitter? bottomDockSplitter;
+	GridLength leftDockWidth;
+	GridLength rightDockWidth;
+	GridLength bottomDockHeight;
+	GridLength leftSplitterWidth;
+	GridLength rightSplitterWidth;
+	GridLength bottomSplitterHeight;
+	double leftDockMinWidth;
+	double leftDockMaxWidth;
+	double rightDockMinWidth;
+	double rightDockMaxWidth;
+	double bottomDockMinHeight;
+	double bottomDockMaxHeight;
 	Canvas? floatingLayer;
 	DockablePanel? layersPanel;
 	DockablePanel? propertiesPanel;
@@ -408,9 +424,18 @@ public partial class MainView : UserControl
 		leftDockHost = this.FindControl<DockHost>("LeftDockHost");
 		rightDockHost = this.FindControl<DockHost>("RightDockHost");
 		bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
+		mainGrid = this.FindControl<Grid>("MainGrid");
+		leftDockSplitter = this.FindControl<GridSplitter>("LeftDockSplitter");
+		rightDockSplitter = this.FindControl<GridSplitter>("RightDockSplitter");
+		bottomDockSplitter = this.FindControl<GridSplitter>("BottomDockSplitter");
 		fileTabStrip = this.FindControl<StackPanel>("FileTabStrip");
 		canvasImage = this.FindControl<Image>("CanvasImage");
 		floatingLayer = FindFloatingLayer();
+		InitDockSizes();
+		HookDockHostEvents();
+		if (leftDockHost != null) leftDockHost.DockEdge = DockEdge.Left;
+		if (rightDockHost != null) rightDockHost.DockEdge = DockEdge.Right;
+		if (bottomDockHost != null) bottomDockHost.DockEdge = DockEdge.Bottom;
 		if (DataContext == null && this.Parent is Control parentControl && parentControl.DataContext != null)
 			DataContext = parentControl.DataContext;
 		SetViewModel(DataContext as MainViewModel);
@@ -484,6 +509,197 @@ public partial class MainView : UserControl
 			};
 			timelinePanel.CloseRequested += OnPanelCloseRequested;
 			bottomDockHost.AddPanel(timelinePanel);
+		}
+		UpdateDockHostSizes();
+	}
+
+	void HookDockHostEvents()
+	{
+		if (leftDockHost != null)
+		{
+			leftDockHost.DockedItemsChanged -= OnDockedItemsChanged;
+			leftDockHost.DockedItemsChanged += OnDockedItemsChanged;
+		}
+		if (rightDockHost != null)
+		{
+			rightDockHost.DockedItemsChanged -= OnDockedItemsChanged;
+			rightDockHost.DockedItemsChanged += OnDockedItemsChanged;
+		}
+		if (bottomDockHost != null)
+		{
+			bottomDockHost.DockedItemsChanged -= OnDockedItemsChanged;
+			bottomDockHost.DockedItemsChanged += OnDockedItemsChanged;
+		}
+	}
+
+	void OnDockedItemsChanged(object? sender, EventArgs e)
+	{
+		UpdateDockHostSizes();
+	}
+
+	void InitDockSizes()
+	{
+		if (mainGrid == null) return;
+		if (mainGrid.ColumnDefinitions.Count >= 5)
+		{
+			var leftCol = mainGrid.ColumnDefinitions[0];
+			var leftSplitCol = mainGrid.ColumnDefinitions[1];
+			var rightCol = mainGrid.ColumnDefinitions[4];
+			var rightSplitCol = mainGrid.ColumnDefinitions[3];
+			leftDockWidth = leftCol.Width;
+			rightDockWidth = rightCol.Width;
+			leftSplitterWidth = leftSplitCol.Width;
+			rightSplitterWidth = rightSplitCol.Width;
+			leftDockMinWidth = leftCol.MinWidth;
+			leftDockMaxWidth = leftCol.MaxWidth;
+			rightDockMinWidth = rightCol.MinWidth;
+			rightDockMaxWidth = rightCol.MaxWidth;
+		}
+		if (mainGrid.RowDefinitions.Count >= 3)
+		{
+			var splitRow = mainGrid.RowDefinitions[1];
+			var bottomRow = mainGrid.RowDefinitions[2];
+			bottomSplitterHeight = splitRow.Height;
+			bottomDockHeight = bottomRow.Height;
+			bottomDockMinHeight = bottomRow.MinHeight;
+			bottomDockMaxHeight = bottomRow.MaxHeight;
+		}
+	}
+
+	void UpdateDockHostSizes()
+	{
+		if (mainGrid == null) return;
+		UpdateLeftDockSize();
+		UpdateRightDockSize();
+		UpdateBottomDockSize();
+	}
+
+	void UpdateLeftDockSize()
+	{
+		if (leftDockHost == null || mainGrid == null) return;
+		if (mainGrid.ColumnDefinitions.Count < 2) return;
+		var leftCol = mainGrid.ColumnDefinitions[0];
+		var splitCol = mainGrid.ColumnDefinitions[1];
+		var hasPanels = leftDockHost.HasPanels;
+		if (hasPanels)
+		{
+			if (leftCol.Width.Value > 0)
+				leftDockWidth = leftCol.Width;
+			leftCol.MinWidth = leftDockMinWidth;
+			leftCol.MaxWidth = leftDockMaxWidth;
+			if (leftCol.Width.Value == 0)
+				leftCol.Width = leftDockWidth;
+			splitCol.Width = leftSplitterWidth;
+			leftDockHost.PreviewDockWidth = leftDockWidth.Value;
+			leftDockHost.PreviewDockHeight = leftDockHost.Bounds.Height;
+			if (leftDockSplitter != null)
+			{
+				leftDockSplitter.IsVisible = true;
+				leftDockSplitter.IsEnabled = true;
+			}
+		}
+		else
+		{
+			if (leftCol.Width.Value > 0)
+				leftDockWidth = leftCol.Width;
+			leftDockMinWidth = leftCol.MinWidth;
+			leftDockMaxWidth = leftCol.MaxWidth;
+			leftCol.MinWidth = 0;
+			leftCol.Width = new GridLength(0);
+			splitCol.Width = new GridLength(0);
+			leftDockHost.PreviewDockWidth = leftDockWidth.Value;
+			leftDockHost.PreviewDockHeight = leftDockHost.Bounds.Height;
+			if (leftDockSplitter != null)
+			{
+				leftDockSplitter.IsVisible = false;
+				leftDockSplitter.IsEnabled = false;
+			}
+		}
+	}
+
+	void UpdateRightDockSize()
+	{
+		if (rightDockHost == null || mainGrid == null) return;
+		if (mainGrid.ColumnDefinitions.Count < 5) return;
+		var rightCol = mainGrid.ColumnDefinitions[4];
+		var splitCol = mainGrid.ColumnDefinitions[3];
+		var hasPanels = rightDockHost.HasPanels;
+		if (hasPanels)
+		{
+			if (rightCol.Width.Value > 0)
+				rightDockWidth = rightCol.Width;
+			rightCol.MinWidth = rightDockMinWidth;
+			rightCol.MaxWidth = rightDockMaxWidth;
+			if (rightCol.Width.Value == 0)
+				rightCol.Width = rightDockWidth;
+			splitCol.Width = rightSplitterWidth;
+			rightDockHost.PreviewDockWidth = rightDockWidth.Value;
+			rightDockHost.PreviewDockHeight = rightDockHost.Bounds.Height;
+			if (rightDockSplitter != null)
+			{
+				rightDockSplitter.IsVisible = true;
+				rightDockSplitter.IsEnabled = true;
+			}
+		}
+		else
+		{
+			if (rightCol.Width.Value > 0)
+				rightDockWidth = rightCol.Width;
+			rightDockMinWidth = rightCol.MinWidth;
+			rightDockMaxWidth = rightCol.MaxWidth;
+			rightCol.MinWidth = 0;
+			rightCol.Width = new GridLength(0);
+			splitCol.Width = new GridLength(0);
+			rightDockHost.PreviewDockWidth = rightDockWidth.Value;
+			rightDockHost.PreviewDockHeight = rightDockHost.Bounds.Height;
+			if (rightDockSplitter != null)
+			{
+				rightDockSplitter.IsVisible = false;
+				rightDockSplitter.IsEnabled = false;
+			}
+		}
+	}
+
+	void UpdateBottomDockSize()
+	{
+		if (bottomDockHost == null || mainGrid == null) return;
+		if (mainGrid.RowDefinitions.Count < 3) return;
+		var splitRow = mainGrid.RowDefinitions[1];
+		var bottomRow = mainGrid.RowDefinitions[2];
+		var hasPanels = bottomDockHost.HasPanels;
+		if (hasPanels)
+		{
+			if (bottomRow.Height.Value > 0)
+				bottomDockHeight = bottomRow.Height;
+			bottomRow.MinHeight = bottomDockMinHeight;
+			bottomRow.MaxHeight = bottomDockMaxHeight;
+			if (bottomRow.Height.Value == 0)
+				bottomRow.Height = bottomDockHeight;
+			splitRow.Height = bottomSplitterHeight;
+			bottomDockHost.PreviewDockWidth = bottomDockHost.Bounds.Width;
+			bottomDockHost.PreviewDockHeight = bottomDockHeight.Value;
+			if (bottomDockSplitter != null)
+			{
+				bottomDockSplitter.IsVisible = true;
+				bottomDockSplitter.IsEnabled = true;
+			}
+		}
+		else
+		{
+			if (bottomRow.Height.Value > 0)
+				bottomDockHeight = bottomRow.Height;
+			bottomDockMinHeight = bottomRow.MinHeight;
+			bottomDockMaxHeight = bottomRow.MaxHeight;
+			bottomRow.MinHeight = 0;
+			bottomRow.Height = new GridLength(0);
+			splitRow.Height = new GridLength(0);
+			bottomDockHost.PreviewDockWidth = bottomDockHost.Bounds.Width;
+			bottomDockHost.PreviewDockHeight = bottomDockHeight.Value;
+			if (bottomDockSplitter != null)
+			{
+				bottomDockSplitter.IsVisible = false;
+				bottomDockSplitter.IsEnabled = false;
+			}
 		}
 	}
 

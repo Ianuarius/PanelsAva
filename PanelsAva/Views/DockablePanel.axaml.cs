@@ -466,8 +466,17 @@ public partial class DockablePanel : UserControl
 
 					previewBorder.Width = previewRect.Width;
 					previewBorder.Height = previewRect.Height;
-					Canvas.SetLeft(previewBorder, dockPos.Value.X + previewRect.X);
-					Canvas.SetTop(previewBorder, dockPos.Value.Y + previewRect.Y);
+					double offsetX = 0;
+					double offsetY = 0;
+					if (targetDockHost.Bounds.Width <= 0 || targetDockHost.Bounds.Height <= 0)
+					{
+						if (targetDockHost.DockEdge == DockEdge.Right)
+							offsetX = -previewRect.Width;
+						else if (targetDockHost.DockEdge == DockEdge.Bottom)
+							offsetY = -previewRect.Height;
+					}
+					Canvas.SetLeft(previewBorder, dockPos.Value.X + previewRect.X + offsetX);
+					Canvas.SetTop(previewBorder, dockPos.Value.Y + previewRect.Y + offsetY);
 				}
 			}
 		}
@@ -490,6 +499,8 @@ public partial class DockablePanel : UserControl
 			if (dockTopLeft.HasValue)
 			{
 				var dockRect = new Rect(dockTopLeft.Value, dh.Bounds.Size);
+				if (dockRect.Width <= 0 || dockRect.Height <= 0)
+					dockRect = GetDockHotRect(dh, dockTopLeft.Value, visualRoot);
 				if (dockRect.Contains(posRoot))
 				{
 					return dh;
@@ -497,6 +508,25 @@ public partial class DockablePanel : UserControl
 			}
 		}
 		return null;
+	}
+
+	Rect GetDockHotRect(DockHost dockHost, Point dockTopLeft, Visual visualRoot)
+	{
+		double scale = 1.0;
+		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
+		double hotSize = 100 * scale;
+		var rootBounds = visualRoot.Bounds;
+		var height = dockHost.Bounds.Height > 0 ? dockHost.Bounds.Height : rootBounds.Height;
+		var width = dockHost.Bounds.Width > 0 ? dockHost.Bounds.Width : rootBounds.Width;
+
+		if (dockHost.DockEdge == DockEdge.Left)
+			return new Rect(dockTopLeft.X, dockTopLeft.Y, hotSize, height);
+		if (dockHost.DockEdge == DockEdge.Right)
+			return new Rect(dockTopLeft.X - hotSize, dockTopLeft.Y, hotSize, height);
+		if (dockHost.DockEdge == DockEdge.Bottom)
+			return new Rect(dockTopLeft.X, dockTopLeft.Y - hotSize, width, hotSize);
+
+		return new Rect(dockTopLeft, dockHost.Bounds.Size);
 	}
 
 	DockablePanel? FindPanelAt(Point posRoot, Visual visualRoot)

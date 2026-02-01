@@ -8,6 +8,14 @@ using System.Diagnostics;
 
 namespace PanelsAva.Views;
 
+public enum DockEdge
+{
+	None,
+	Left,
+	Right,
+	Bottom
+}
+
 public class TabGroup
 {
 	public List<DockablePanel> Panels { get; } = new();
@@ -47,6 +55,7 @@ public partial class DockHost : UserControl
 {
 	Grid? panelsGrid;
 	List<object> dockedItems = new();
+	int lastDockedItemsCount;
 
 	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockHost, bool>(nameof(IsHorizontal), false);
 
@@ -55,6 +64,14 @@ public partial class DockHost : UserControl
 		get => GetValue(IsHorizontalProperty);
 		set => SetValue(IsHorizontalProperty, value);
 	}
+
+	public bool HasPanels => dockedItems.Count > 0;
+
+	public DockEdge DockEdge { get; set; }
+	public double PreviewDockWidth { get; set; }
+	public double PreviewDockHeight { get; set; }
+
+	public event EventHandler? DockedItemsChanged;
 
 	public DockHost()
 	{
@@ -155,23 +172,29 @@ public partial class DockHost : UserControl
 
 	public Rect GetDockPreviewRect(Point positionInHost)
 	{
+		double hostWidth = Bounds.Width > 0 ? Bounds.Width : PreviewDockWidth;
+		double hostHeight = Bounds.Height > 0 ? Bounds.Height : PreviewDockHeight;
+		if (hostWidth <= 0) hostWidth = Bounds.Width;
+		if (hostHeight <= 0) hostHeight = Bounds.Height;
+		if (hostWidth <= 0 || hostHeight <= 0) return new Rect(0, 0, 0, 0);
+
 		int targetIndex = FindTargetIndex(positionInHost);
 		int newCount = dockedItems.Count + 1;
 		int splitterCount = newCount - 1;
 		double splitterSize = 4;
 		double totalSplitterSize = splitterCount * splitterSize;
-		double availableSize = IsHorizontal ? Bounds.Width - totalSplitterSize : Bounds.Height - totalSplitterSize;
-		if (availableSize <= 0) availableSize = IsHorizontal ? Bounds.Width : Bounds.Height;
+		double availableSize = IsHorizontal ? hostWidth - totalSplitterSize : hostHeight - totalSplitterSize;
+		if (availableSize <= 0) availableSize = IsHorizontal ? hostWidth : hostHeight;
 		double panelSize = availableSize / newCount;
 		if (IsHorizontal)
 		{
 			double x = targetIndex * (panelSize + splitterSize);
-			return new Rect(x, 0, panelSize, Bounds.Height);
+			return new Rect(x, 0, panelSize, hostHeight);
 		}
 		else
 		{
 			double y = targetIndex * (panelSize + splitterSize);
-			return new Rect(0, y, Bounds.Width, panelSize);
+			return new Rect(0, y, hostWidth, panelSize);
 		}
 	}
 
@@ -335,6 +358,12 @@ public partial class DockHost : UserControl
 		panelsGrid.InvalidateArrange();
 		this.InvalidateMeasure();
 		this.InvalidateArrange();
+
+		if (lastDockedItemsCount != dockedItems.Count)
+		{
+			lastDockedItemsCount = dockedItems.Count;
+			DockedItemsChanged?.Invoke(this, EventArgs.Empty);
+		}
 	}
 
 	void ClearFloatingProperties(DockablePanel panel)

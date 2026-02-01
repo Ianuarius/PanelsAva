@@ -12,6 +12,7 @@ Features
 - File tabs that can be dragged out to float like panels, with the canvas displayed in floating windows.
 - Simple MVVM-friendly structure: Views + ViewModels provided.
 - Example panels included (Layers, Brushes, Color, History, Properties, Timeline). Placeholder content reacts to selected file.
+- Dynamic canvas expansion when dock hosts are empty, with hot zones for re-docking panels.
 
 Quick start
 -----------
@@ -59,7 +60,6 @@ Where to look in this repo
 
 TODO
 ----
-- Collapsing empty DockHosts.
 - Locking the Workspace.
 - Saving and loading Workspaces.
 - Saving/loading where the panel was closed.
