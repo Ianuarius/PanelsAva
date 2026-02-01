@@ -36,12 +36,12 @@ public partial class MainView : UserControl
 	GridLength leftSplitterWidth;
 	GridLength rightSplitterWidth;
 	GridLength bottomSplitterHeight;
-	double leftDockMinWidth;
-	double leftDockMaxWidth;
-	double rightDockMinWidth;
-	double rightDockMaxWidth;
-	double bottomDockMinHeight;
-	double bottomDockMaxHeight;
+	double leftDockMinWidth = 100;
+	double leftDockMaxWidth = double.MaxValue;
+	double rightDockMinWidth = 100;
+	double rightDockMaxWidth = double.MaxValue;
+	double bottomDockMinHeight = 100;
+	double bottomDockMaxHeight = double.MaxValue;
 	Canvas? floatingLayer;
 	DockablePanel? layersPanel;
 	DockablePanel? propertiesPanel;
@@ -1196,10 +1196,6 @@ public partial class MainView : UserControl
 			rightDockWidth = rightCol.Width;
 			leftSplitterWidth = leftSplitCol.Width;
 			rightSplitterWidth = rightSplitCol.Width;
-			leftDockMinWidth = leftCol.MinWidth;
-			leftDockMaxWidth = leftCol.MaxWidth;
-			rightDockMinWidth = rightCol.MinWidth;
-			rightDockMaxWidth = rightCol.MaxWidth;
 		}
 		if (mainGrid.RowDefinitions.Count >= 4)
 		{
@@ -1207,8 +1203,6 @@ public partial class MainView : UserControl
 			var bottomRow = mainGrid.RowDefinitions[3];
 			bottomSplitterHeight = splitRow.Height;
 			bottomDockHeight = bottomRow.Height;
-			bottomDockMinHeight = bottomRow.MinHeight;
-			bottomDockMaxHeight = bottomRow.MaxHeight;
 		}
 	}
 
@@ -1248,9 +1242,8 @@ public partial class MainView : UserControl
 		{
 			if (leftCol.Width.Value > 0)
 				leftDockWidth = leftCol.Width;
-			leftDockMinWidth = leftCol.MinWidth;
-			leftDockMaxWidth = leftCol.MaxWidth;
 			leftCol.MinWidth = 0;
+			leftCol.MaxWidth = double.MaxValue;
 			leftCol.Width = new GridLength(0);
 			splitCol.Width = new GridLength(0);
 			leftDockHost.PreviewDockWidth = leftDockWidth.Value;
@@ -1291,9 +1284,8 @@ public partial class MainView : UserControl
 		{
 			if (rightCol.Width.Value > 0)
 				rightDockWidth = rightCol.Width;
-			rightDockMinWidth = rightCol.MinWidth;
-			rightDockMaxWidth = rightCol.MaxWidth;
 			rightCol.MinWidth = 0;
+			rightCol.MaxWidth = double.MaxValue;
 			rightCol.Width = new GridLength(0);
 			splitCol.Width = new GridLength(0);
 			rightDockHost.PreviewDockWidth = rightDockWidth.Value;
@@ -1334,9 +1326,8 @@ public partial class MainView : UserControl
 		{
 			if (bottomRow.Height.Value > 0)
 				bottomDockHeight = bottomRow.Height;
-			bottomDockMinHeight = bottomRow.MinHeight;
-			bottomDockMaxHeight = bottomRow.MaxHeight;
 			bottomRow.MinHeight = 0;
+			bottomRow.MaxHeight = double.MaxValue;
 			bottomRow.Height = new GridLength(0);
 			splitRow.Height = new GridLength(0);
 			bottomDockHost.PreviewDockWidth = bottomDockHost.Bounds.Width;
