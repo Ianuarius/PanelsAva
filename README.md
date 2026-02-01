@@ -3,6 +3,8 @@ PanelsAva
 
 Dockable Photoshop-style panels (palettes) for Avalonia applications.
 
+https://www.youtube.com/watch?v=cB57WMR54m4
+
 Features
 --------
 - Dockable, floatable panels and hosts similar to Photoshop palettes.
