@@ -13,6 +13,12 @@ public class LayoutConfig
 	public List<PanelState> Panels { get; set; } = new();
 }
 
+public class WorkspaceProfiles
+{
+	public string ActiveProfile { get; set; } = string.Empty;
+	public Dictionary<string, LayoutConfig> Profiles { get; set; } = new();
+}
+
 public class DockHostLayout
 {
 	public string DockEdge { get; set; } = string.Empty;

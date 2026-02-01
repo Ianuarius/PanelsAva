@@ -52,6 +52,11 @@ public partial class MainView : UserControl
 	readonly Dictionary<Document, FileTabFloatingPanel> floatingPanels = new();
 	Border? fileTabPreview;
 	LayoutConfig? layoutConfig;
+	LayoutConfig? defaultLayoutConfig;
+	WorkspaceProfiles? workspaceProfiles;
+	string activeProfileName = string.Empty;
+	const string defaultProfileName = "Default";
+	const string legacyProfileName = "Last Workspace";
 	DispatcherTimer? layoutSaveTimer;
 	bool isApplyingLayout;
 	bool isWorkspaceLocked;
@@ -587,9 +592,13 @@ public partial class MainView : UserControl
 
 	void LoadAndApplyLayout()
 	{
-		layoutConfig = LoadLayoutConfig();
-		if (layoutConfig != null)
-			ApplyLayoutConfig(layoutConfig);
+		if (defaultLayoutConfig == null)
+			defaultLayoutConfig = BuildLayoutConfig();
+		workspaceProfiles = LoadWorkspaceProfiles();
+		activeProfileName = workspaceProfiles.ActiveProfile;
+		var config = GetProfileConfig(activeProfileName);
+		if (config != null)
+			ApplyLayoutConfig(config);
 	}
 
 	string GetLayoutConfigPath()
@@ -598,23 +607,64 @@ public partial class MainView : UserControl
 		return Path.Combine(root, "PanelsAva", "layout.json");
 	}
 
-	LayoutConfig? LoadLayoutConfig()
+	WorkspaceProfiles LoadWorkspaceProfiles()
 	{
+		var profiles = new WorkspaceProfiles();
 		try
 		{
 			var path = GetLayoutConfigPath();
-			if (!File.Exists(path))
-				return null;
-			var json = File.ReadAllText(path);
-			return JsonSerializer.Deserialize<LayoutConfig>(json);
+			if (File.Exists(path))
+			{
+				var json = File.ReadAllText(path);
+				var existingProfiles = JsonSerializer.Deserialize<WorkspaceProfiles>(json);
+				if (existingProfiles != null && existingProfiles.Profiles.Count > 0)
+				{
+					profiles = existingProfiles;
+				}
+				else
+				{
+					var legacy = JsonSerializer.Deserialize<LayoutConfig>(json);
+					if (legacy != null)
+					{
+						profiles.Profiles[legacyProfileName] = legacy;
+						profiles.ActiveProfile = legacyProfileName;
+					}
+				}
+			}
 		}
 		catch
 		{
-			return null;
 		}
+		profiles = EnsureDefaultProfile(profiles);
+		WriteWorkspaceProfiles(profiles);
+		return profiles;
 	}
 
-	void WriteLayoutConfig(LayoutConfig config)
+	WorkspaceProfiles EnsureDefaultProfile(WorkspaceProfiles profiles)
+	{
+		if (!profiles.Profiles.ContainsKey(defaultProfileName) && defaultLayoutConfig != null)
+			profiles.Profiles[defaultProfileName] = defaultLayoutConfig;
+		if (string.IsNullOrWhiteSpace(profiles.ActiveProfile) || !profiles.Profiles.ContainsKey(profiles.ActiveProfile))
+			profiles.ActiveProfile = defaultProfileName;
+		return profiles;
+	}
+
+	LayoutConfig? GetProfileConfig(string name)
+	{
+		if (workspaceProfiles == null) return null;
+		if (IsDefaultProfile(name) && defaultLayoutConfig != null)
+			return defaultLayoutConfig;
+		if (workspaceProfiles.Profiles.TryGetValue(name, out var config))
+			return config;
+		return defaultLayoutConfig;
+	}
+
+	bool IsDefaultProfile(string name)
+	{
+		return string.Equals(name, defaultProfileName, StringComparison.OrdinalIgnoreCase);
+	}
+
+	void WriteWorkspaceProfiles(WorkspaceProfiles profiles)
 	{
 		try
 		{
@@ -622,7 +672,7 @@ public partial class MainView : UserControl
 			var dir = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(dir))
 				Directory.CreateDirectory(dir);
-			var json = JsonSerializer.Serialize(config);
+			var json = JsonSerializer.Serialize(profiles);
 			File.WriteAllText(path, json);
 		}
 		catch
@@ -654,9 +704,23 @@ public partial class MainView : UserControl
 
 	void SaveLayoutConfig()
 	{
-		var config = BuildLayoutConfig();
-		layoutConfig = config;
-		WriteLayoutConfig(config);
+		if (workspaceProfiles == null)
+		{
+			var config = BuildLayoutConfig();
+			layoutConfig = config;
+			return;
+		}
+		if (string.IsNullOrWhiteSpace(activeProfileName))
+			activeProfileName = workspaceProfiles.ActiveProfile;
+		if (IsDefaultProfile(activeProfileName))
+		{
+			layoutConfig = BuildLayoutConfig();
+			return;
+		}
+		var activeConfig = BuildLayoutConfig();
+		layoutConfig = activeConfig;
+		workspaceProfiles.Profiles[activeProfileName] = activeConfig;
+		WriteWorkspaceProfiles(workspaceProfiles);
 	}
 
 	LayoutConfig BuildLayoutConfig()
@@ -1197,6 +1261,53 @@ public partial class MainView : UserControl
 		if (brushesPanel != null) brushesPanel.CanFloat = canFloat;
 		if (historyPanel != null) historyPanel.CanFloat = canFloat;
 		if (timelinePanel != null) timelinePanel.CanFloat = canFloat;
+	}
+
+	public IReadOnlyList<string> GetWorkspaceProfileNames()
+	{
+		if (workspaceProfiles == null) return Array.Empty<string>();
+		var list = new List<string>();
+		foreach (var pair in workspaceProfiles.Profiles)
+		{
+			if (IsDefaultProfile(pair.Key)) continue;
+			list.Add(pair.Key);
+		}
+		list.Sort(StringComparer.OrdinalIgnoreCase);
+		return list;
+	}
+
+	public bool SaveWorkspaceProfile(string name)
+	{
+		if (workspaceProfiles == null) return false;
+		var trimmed = name?.Trim();
+		if (string.IsNullOrWhiteSpace(trimmed)) return false;
+		if (IsDefaultProfile(trimmed)) return false;
+		var config = BuildLayoutConfig();
+		workspaceProfiles.Profiles[trimmed] = config;
+		workspaceProfiles.ActiveProfile = trimmed;
+		activeProfileName = trimmed;
+		layoutConfig = config;
+		WriteWorkspaceProfiles(workspaceProfiles);
+		return true;
+	}
+
+	public bool LoadWorkspaceProfile(string name)
+	{
+		if (workspaceProfiles == null) return false;
+		if (string.IsNullOrWhiteSpace(name)) return false;
+		if (!workspaceProfiles.Profiles.ContainsKey(name) && !IsDefaultProfile(name)) return false;
+		activeProfileName = name;
+		workspaceProfiles.ActiveProfile = name;
+		var config = GetProfileConfig(name);
+		if (config == null) return false;
+		ApplyLayoutConfig(config);
+		WriteWorkspaceProfiles(workspaceProfiles);
+		return true;
+	}
+
+	public bool LoadDefaultWorkspace()
+	{
+		return LoadWorkspaceProfile(defaultProfileName);
 	}
 
 	public bool IsLayersPanelVisible => IsPanelVisible(layersPanel);

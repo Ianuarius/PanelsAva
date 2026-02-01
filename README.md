@@ -15,6 +15,7 @@ Features
 - Persistent panel layouts: positions, orders, sizes, and floating states are automatically saved and restored across application sessions.
 - Hidden panels can be reopened from the Window menu and will appear in their last known location, size (relative, more or less), and state.
 - Layout can be locked/unlocked from the Window menu.
+- Layouts can be saved and loaded. You can also reset back to default workspace.
 - Example panels included (Layers, Brushes, Color, History, Properties, Timeline). Placeholder content reacts to selected file.
 - Example file tabs with sample images opened in a Canvas control.
 
@@ -64,7 +65,6 @@ Where to look in this repo
 
 TODO
 ----
-- Saving and loading Workspaces.
 - Dockable toolbar.
 
 License

@@ -17,6 +17,10 @@
 				<MenuItem x:Name="HistoryMenuItem" Header="History" Click="OnToggleHistory" />
 				<MenuItem x:Name="TimelineMenuItem" Header="Timeline" Click="OnToggleTimeline" />
 				<Separator />
+				<MenuItem x:Name="SaveWorkspaceMenuItem" Header="Save Workspace" Click="OnSaveWorkspace" />
+				<MenuItem x:Name="LoadWorkspaceMenuItem" Header="Load Workspace" />
+				<MenuItem x:Name="DefaultWorkspaceMenuItem" Header="Default Workspace" Click="OnLoadDefaultWorkspace" />
+				<Separator />
 				<MenuItem x:Name="LockWorkspaceMenuItem" Header="Lock Workspace" Click="OnToggleLockWorkspace" />
 			</MenuItem>
 		</Menu>
