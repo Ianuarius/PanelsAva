@@ -5,6 +5,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Avalonia.VisualTree;
 using System.Diagnostics;
+using Avalonia.Input;
+using PanelsAva.Models;
 
 namespace PanelsAva.Views;
 
@@ -72,11 +74,87 @@ public partial class DockHost : UserControl
 	public double PreviewDockHeight { get; set; }
 
 	public event EventHandler? DockedItemsChanged;
+	public event EventHandler? LayoutChanged;
 
 	public DockHost()
 	{
 		InitializeComponent();
 		panelsGrid = this.FindControl<Grid>("PanelsGrid");
+	}
+
+	public DockHostLayout GetLayout()
+	{
+		var layout = new DockHostLayout
+		{
+			DockEdge = DockEdge.ToString()
+		};
+
+		for (int i = 0; i < dockedItems.Count; i++)
+		{
+			if (dockedItems[i] is DockablePanel panel)
+			{
+				layout.Items.Add(new DockHostItemLayout
+				{
+					Panels = new List<string> { panel.Title },
+					ActiveIndex = 0
+				});
+			}
+			else if (dockedItems[i] is TabGroup tg)
+			{
+				var item = new DockHostItemLayout
+				{
+					ActiveIndex = tg.ActiveIndex
+				};
+				for (int j = 0; j < tg.Panels.Count; j++)
+					item.Panels.Add(tg.Panels[j].Title);
+				layout.Items.Add(item);
+			}
+		}
+
+		layout.ItemSizes = GetItemSizes();
+		return layout;
+	}
+
+	public void ApplyLayout(DockHostLayout? layout, Func<string, DockablePanel?> resolvePanel)
+	{
+		dockedItems.Clear();
+		if (layout != null)
+		{
+			for (int i = 0; i < layout.Items.Count; i++)
+			{
+				var item = layout.Items[i];
+				var panels = new List<DockablePanel>();
+				for (int j = 0; j < item.Panels.Count; j++)
+				{
+					var panel = resolvePanel(item.Panels[j]);
+					if (panel != null)
+					{
+						panel.DockHost = this;
+						panels.Add(panel);
+					}
+				}
+				if (panels.Count == 1)
+				{
+					dockedItems.Add(panels[0]);
+				}
+				else if (panels.Count > 1)
+				{
+					var tg = new TabGroup();
+					for (int j = 0; j < panels.Count; j++)
+						tg.AddPanel(panels[j]);
+					tg.ActiveIndex = Math.Clamp(item.ActiveIndex, 0, Math.Max(0, panels.Count - 1));
+					dockedItems.Add(tg);
+				}
+			}
+		}
+		RebuildGrid();
+		ApplyItemSizes(layout);
+	}
+
+	public void ClearPanels()
+	{
+		dockedItems.Clear();
+		RebuildGrid();
 	}
 
 	public void RemovePanel(DockablePanel panel)
@@ -277,6 +355,8 @@ public partial class DockHost : UserControl
 						ResizeDirection = GridResizeDirection.Columns,
 						Width = 4
 					};
+					splitter.PointerReleased += SplitterOnPointerReleased;
+					splitter.PointerCaptureLost += SplitterOnPointerCaptureLost;
 					Grid.SetColumn(splitter, panelsGrid.ColumnDefinitions.Count - 1);
 					panelsGrid.Children.Add(splitter);
 				}
@@ -289,6 +369,8 @@ public partial class DockHost : UserControl
 						ResizeDirection = GridResizeDirection.Rows,
 						Height = 4
 					};
+					splitter.PointerReleased += SplitterOnPointerReleased;
+					splitter.PointerCaptureLost += SplitterOnPointerCaptureLost;
 					Grid.SetRow(splitter, panelsGrid.RowDefinitions.Count - 1);
 					panelsGrid.Children.Add(splitter);
 				}
@@ -364,6 +446,78 @@ public partial class DockHost : UserControl
 			lastDockedItemsCount = dockedItems.Count;
 			DockedItemsChanged?.Invoke(this, EventArgs.Empty);
 		}
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	List<double> GetItemSizes()
+	{
+		var sizes = new List<double>();
+		var lengths = new List<double>();
+		for (int i = 0; i < dockedItems.Count; i++)
+		{
+			DockablePanel? panel = null;
+			if (dockedItems[i] is DockablePanel p)
+				panel = p;
+			else if (dockedItems[i] is TabGroup tg)
+				panel = tg.ActivePanel;
+			
+			if (panel == null)
+			{
+				lengths.Add(1);
+				continue;
+			}
+
+			var size = IsHorizontal ? panel.Bounds.Width : panel.Bounds.Height;
+			if (size <= 0)
+				size = 1;
+			lengths.Add(size);
+		}
+		double total = lengths.Sum();
+		for (int i = 0; i < lengths.Count; i++)
+		{
+			sizes.Add(total > 0 ? lengths[i] / total : 1.0 / lengths.Count);
+		}
+		return sizes;
+	}
+
+	void ApplyItemSizes(DockHostLayout? layout)
+	{
+		if (layout == null || panelsGrid == null) return;
+		if (layout.ItemSizes.Count == 0) return;
+		if (IsHorizontal)
+		{
+			for (int i = 0; i < layout.ItemSizes.Count; i++)
+			{
+				int colIndex = i * 2;
+				if (colIndex >= 0 && colIndex < panelsGrid.ColumnDefinitions.Count)
+				{
+					var size = layout.ItemSizes[i];
+					panelsGrid.ColumnDefinitions[colIndex].Width = new GridLength(size > 0 ? size : 1, GridUnitType.Star);
+				}
+			}
+		}
+		else
+		{
+			for (int i = 0; i < layout.ItemSizes.Count; i++)
+			{
+				int rowIndex = i * 2;
+				if (rowIndex >= 0 && rowIndex < panelsGrid.RowDefinitions.Count)
+				{
+					var size = layout.ItemSizes[i];
+					panelsGrid.RowDefinitions[rowIndex].Height = new GridLength(size > 0 ? size : 1, GridUnitType.Star);
+				}
+			}
+		}
+	}
+
+	void SplitterOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	void SplitterOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void ClearFloatingProperties(DockablePanel panel)
@@ -372,6 +526,8 @@ public partial class DockHost : UserControl
 		Canvas.SetTop(panel, double.NaN);
 		panel.SetValue(Panel.ZIndexProperty, 0);
 		panel.SetFloating(false);
+		panel.ClearValue(Control.WidthProperty);
+		panel.ClearValue(Control.HeightProperty);
 	}
 
 	static void RemoveFromParent(Control control)

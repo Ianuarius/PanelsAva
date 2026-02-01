@@ -9,6 +9,10 @@ using Avalonia.Input;
 using System.Collections.Generic;
 using PanelsAva;
 using Avalonia;
+using PanelsAva.Models;
+using System.Text.Json;
+using System.IO;
+using Avalonia.Threading;
 
 namespace PanelsAva.Views;
 
@@ -47,6 +51,9 @@ public partial class MainView : UserControl
 	readonly HashSet<Document> floatingDocuments = new();
 	readonly Dictionary<Document, FileTabFloatingPanel> floatingPanels = new();
 	Border? fileTabPreview;
+	LayoutConfig? layoutConfig;
+	DispatcherTimer? layoutSaveTimer;
+	bool isApplyingLayout;
 
 	public MainView()
 	{
@@ -511,6 +518,438 @@ public partial class MainView : UserControl
 			bottomDockHost.AddPanel(timelinePanel);
 		}
 		UpdateDockHostSizes();
+		HookLayoutEvents();
+		LoadAndApplyLayout();
+	}
+
+	void HookLayoutEvents()
+	{
+		HookDockHostLayoutEvents(leftDockHost);
+		HookDockHostLayoutEvents(rightDockHost);
+		HookDockHostLayoutEvents(bottomDockHost);
+		HookPanelLayoutEvents(layersPanel);
+		HookPanelLayoutEvents(propertiesPanel);
+		HookPanelLayoutEvents(colorPanel);
+		HookPanelLayoutEvents(brushesPanel);
+		HookPanelLayoutEvents(historyPanel);
+		HookPanelLayoutEvents(timelinePanel);
+		HookSplitterEvents(leftDockSplitter);
+		HookSplitterEvents(rightDockSplitter);
+		HookSplitterEvents(bottomDockSplitter);
+	}
+
+	void HookDockHostLayoutEvents(DockHost? host)
+	{
+		if (host == null) return;
+		host.LayoutChanged -= OnLayoutChanged;
+		host.LayoutChanged += OnLayoutChanged;
+	}
+
+	void HookPanelLayoutEvents(DockablePanel? panel)
+	{
+		if (panel == null) return;
+		panel.LayoutChanged -= OnLayoutChanged;
+		panel.LayoutChanged += OnLayoutChanged;
+	}
+
+	void HookSplitterEvents(GridSplitter? splitter)
+	{
+		if (splitter == null) return;
+		splitter.PointerReleased -= OnSplitterPointerReleased;
+		splitter.PointerReleased += OnSplitterPointerReleased;
+		splitter.PointerCaptureLost -= OnSplitterPointerCaptureLost;
+		splitter.PointerCaptureLost += OnSplitterPointerCaptureLost;
+	}
+
+	void OnSplitterPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		ScheduleLayoutSave();
+	}
+
+	void OnSplitterPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		ScheduleLayoutSave();
+	}
+
+	void OnLayoutChanged(object? sender, EventArgs e)
+	{
+		ScheduleLayoutSave();
+	}
+
+	void LoadAndApplyLayout()
+	{
+		layoutConfig = LoadLayoutConfig();
+		if (layoutConfig != null)
+			ApplyLayoutConfig(layoutConfig);
+	}
+
+	string GetLayoutConfigPath()
+	{
+		var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+		return Path.Combine(root, "PanelsAva", "layout.json");
+	}
+
+	LayoutConfig? LoadLayoutConfig()
+	{
+		try
+		{
+			var path = GetLayoutConfigPath();
+			if (!File.Exists(path))
+				return null;
+			var json = File.ReadAllText(path);
+			return JsonSerializer.Deserialize<LayoutConfig>(json);
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	void WriteLayoutConfig(LayoutConfig config)
+	{
+		try
+		{
+			var path = GetLayoutConfigPath();
+			var dir = Path.GetDirectoryName(path);
+			if (!string.IsNullOrEmpty(dir))
+				Directory.CreateDirectory(dir);
+			var json = JsonSerializer.Serialize(config);
+			File.WriteAllText(path, json);
+		}
+		catch
+		{
+		}
+	}
+
+	void ScheduleLayoutSave()
+	{
+		if (isApplyingLayout) return;
+		if (layoutSaveTimer == null)
+		{
+			layoutSaveTimer = new DispatcherTimer
+			{
+				Interval = TimeSpan.FromMilliseconds(300)
+			};
+			layoutSaveTimer.Tick += OnLayoutSaveTimerTick;
+		}
+		layoutSaveTimer.Stop();
+		layoutSaveTimer.Start();
+	}
+
+	void OnLayoutSaveTimerTick(object? sender, EventArgs e)
+	{
+		if (layoutSaveTimer != null)
+			layoutSaveTimer.Stop();
+		SaveLayoutConfig();
+	}
+
+	void SaveLayoutConfig()
+	{
+		var config = BuildLayoutConfig();
+		layoutConfig = config;
+		WriteLayoutConfig(config);
+	}
+
+	LayoutConfig BuildLayoutConfig()
+	{
+		var config = new LayoutConfig();
+		config.LeftDockHost = leftDockHost?.GetLayout();
+		config.RightDockHost = rightDockHost?.GetLayout();
+		config.BottomDockHost = bottomDockHost?.GetLayout();
+		config.LeftDockWidth = GetLeftDockWidth();
+		config.RightDockWidth = GetRightDockWidth();
+		config.BottomDockHeight = GetBottomDockHeight();
+
+		var existingStates = new Dictionary<string, PanelState>();
+		if (layoutConfig != null)
+		{
+			for (int i = 0; i < layoutConfig.Panels.Count; i++)
+				existingStates[layoutConfig.Panels[i].Title] = layoutConfig.Panels[i];
+		}
+
+		var states = new Dictionary<string, PanelState>();
+		ApplyDockHostStates(config.LeftDockHost, states, existingStates);
+		ApplyDockHostStates(config.RightDockHost, states, existingStates);
+		ApplyDockHostStates(config.BottomDockHost, states, existingStates);
+
+		var panels = GetAllPanels();
+		for (int i = 0; i < panels.Count; i++)
+		{
+			var panel = panels[i];
+			if (panel.IsFloating)
+			{
+				var state = GetOrCreateState(panel.Title, states, existingStates, panel);
+				state.IsHidden = false;
+				state.IsFloating = true;
+				state.IsTabbed = false;
+				var left = Canvas.GetLeft(panel);
+				var top = Canvas.GetTop(panel);
+				state.FloatingLeft = double.IsNaN(left) ? 0 : left;
+				state.FloatingTop = double.IsNaN(top) ? 0 : top;
+				state.FloatingWidth = panel.Bounds.Width;
+				state.FloatingHeight = panel.Bounds.Height;
+			}
+		}
+
+		for (int i = 0; i < panels.Count; i++)
+		{
+			var panel = panels[i];
+			if (!states.ContainsKey(panel.Title))
+			{
+				var state = GetOrCreateState(panel.Title, states, existingStates, panel);
+				state.IsHidden = true;
+			}
+		}
+
+		config.Panels = new List<PanelState>(states.Values);
+		return config;
+	}
+
+	void ApplyDockHostStates(DockHostLayout? layout, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates)
+	{
+		if (layout == null) return;
+		for (int i = 0; i < layout.Items.Count; i++)
+		{
+			var item = layout.Items[i];
+			for (int j = 0; j < item.Panels.Count; j++)
+			{
+				var title = item.Panels[j];
+				var state = GetOrCreateState(title, states, existingStates, null);
+				state.IsHidden = false;
+				state.IsFloating = false;
+				state.IsTabbed = item.Panels.Count > 1;
+				state.DockEdge = layout.DockEdge;
+				state.DockIndex = i;
+				state.TabIndex = j;
+				state.WasActive = item.ActiveIndex == j;
+				if (i < layout.ItemSizes.Count)
+					state.DockedProportion = layout.ItemSizes[i];
+			}
+		}
+	}
+
+	PanelState GetOrCreateState(string title, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates, DockablePanel? panel)
+	{
+		if (states.TryGetValue(title, out var state))
+			return state;
+		if (existingStates.TryGetValue(title, out var existing))
+		{
+			state = new PanelState
+			{
+				Title = existing.Title,
+				IsHidden = existing.IsHidden,
+				IsFloating = existing.IsFloating,
+				IsTabbed = existing.IsTabbed,
+				DockEdge = existing.DockEdge,
+				DockIndex = existing.DockIndex,
+				TabIndex = existing.TabIndex,
+				WasActive = existing.WasActive,
+				FloatingLeft = existing.FloatingLeft,
+				FloatingTop = existing.FloatingTop,
+				FloatingWidth = existing.FloatingWidth,
+				FloatingHeight = existing.FloatingHeight,
+				DockedProportion = existing.DockedProportion
+			};
+			states[title] = state;
+			return state;
+		}
+		state = new PanelState
+		{
+			Title = title
+		};
+		if (panel != null && panel.DockHost != null)
+			state.DockEdge = panel.DockHost.DockEdge.ToString();
+		states[title] = state;
+		return state;
+	}
+
+	double GetLeftDockWidth()
+	{
+		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 5) return leftDockWidth.Value;
+		var leftCol = mainGrid.ColumnDefinitions[0];
+		return leftCol.Width.Value > 0 ? leftCol.Width.Value : leftDockWidth.Value;
+	}
+
+	double GetRightDockWidth()
+	{
+		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 5) return rightDockWidth.Value;
+		var rightCol = mainGrid.ColumnDefinitions[4];
+		return rightCol.Width.Value > 0 ? rightCol.Width.Value : rightDockWidth.Value;
+	}
+
+	double GetBottomDockHeight()
+	{
+		if (mainGrid == null || mainGrid.RowDefinitions.Count < 3) return bottomDockHeight.Value;
+		var bottomRow = mainGrid.RowDefinitions[2];
+		return bottomRow.Height.Value > 0 ? bottomRow.Height.Value : bottomDockHeight.Value;
+	}
+
+	void ApplyLayoutConfig(LayoutConfig config)
+	{
+		if (mainGrid == null) return;
+		isApplyingLayout = true;
+		try
+		{
+			layoutConfig = config;
+			if (mainGrid.ColumnDefinitions.Count >= 5)
+			{
+				if (config.LeftDockWidth > 0)
+					mainGrid.ColumnDefinitions[0].Width = new GridLength(config.LeftDockWidth, GridUnitType.Pixel);
+				if (config.RightDockWidth > 0)
+					mainGrid.ColumnDefinitions[4].Width = new GridLength(config.RightDockWidth, GridUnitType.Pixel);
+				mainGrid.ColumnDefinitions[1].Width = leftSplitterWidth;
+				mainGrid.ColumnDefinitions[3].Width = rightSplitterWidth;
+			}
+			if (mainGrid.RowDefinitions.Count >= 3)
+			{
+				if (config.BottomDockHeight > 0)
+					mainGrid.RowDefinitions[2].Height = new GridLength(config.BottomDockHeight, GridUnitType.Pixel);
+				mainGrid.RowDefinitions[1].Height = bottomSplitterHeight;
+			}
+
+			ClearAllPanels();
+			ApplyDockHostLayout(leftDockHost, config.LeftDockHost);
+			ApplyDockHostLayout(rightDockHost, config.RightDockHost);
+			ApplyDockHostLayout(bottomDockHost, config.BottomDockHost);
+			ApplyFloatingPanels(config);
+			UpdateDockHostSizes();
+		}
+		finally
+		{
+			isApplyingLayout = false;
+		}
+	}
+
+	void ClearAllPanels()
+	{
+		var panels = GetAllPanels();
+		for (int i = 0; i < panels.Count; i++)
+			RemoveFromParent(panels[i]);
+			
+		leftDockHost?.ClearPanels();
+		rightDockHost?.ClearPanels();
+		bottomDockHost?.ClearPanels();
+	}
+
+	void RemoveFromParent(Control control)
+	{
+		if (control.Parent is Panel panel)
+		{
+			panel.Children.Remove(control);
+			return;
+		}
+		if (control.Parent is ContentControl contentControl)
+		{
+			contentControl.Content = null;
+			return;
+		}
+	}
+
+	void ApplyDockHostLayout(DockHost? host, DockHostLayout? layout)
+	{
+		if (host == null) return;
+		NormalizeItemSizes(layout);
+		host.ApplyLayout(layout, FindPanelByTitle);
+	}
+
+	void NormalizeItemSizes(DockHostLayout? layout)
+	{
+		if (layout == null) return;
+		while (layout.ItemSizes.Count < layout.Items.Count)
+			layout.ItemSizes.Add(0);
+		if (layout.ItemSizes.Count > layout.Items.Count)
+			layout.ItemSizes.RemoveRange(layout.Items.Count, layout.ItemSizes.Count - layout.Items.Count);
+	}
+
+	PanelState? GetPanelStateFromConfig(LayoutConfig config, string title)
+	{
+		for (int i = 0; i < config.Panels.Count; i++)
+		{
+			if (config.Panels[i].Title == title)
+				return config.Panels[i];
+		}
+		return null;
+	}
+
+	void RemovePanelFromDockHostLayout(DockHostLayout? layout, string title)
+	{
+		if (layout == null) return;
+		for (int i = layout.Items.Count - 1; i >= 0; i--)
+		{
+			var item = layout.Items[i];
+			int index = item.Panels.IndexOf(title);
+			if (index >= 0)
+			{
+				item.Panels.RemoveAt(index);
+				if (item.ActiveIndex >= item.Panels.Count)
+					item.ActiveIndex = Math.Max(0, item.Panels.Count - 1);
+				if (item.Panels.Count == 0)
+				{
+					layout.Items.RemoveAt(i);
+					if (layout.ItemSizes.Count > i)
+						layout.ItemSizes.RemoveAt(i);
+				}
+				else if (item.Panels.Count == 1)
+				{
+					item.ActiveIndex = 0;
+				}
+			}
+		}
+		// Renormalize proportions so remaining items sum to 1
+		if (layout.ItemSizes.Count > 0)
+		{
+			double total = 0;
+			for (int i = 0; i < layout.ItemSizes.Count; i++)
+				total += layout.ItemSizes[i];
+			if (total > 0)
+			{
+				for (int i = 0; i < layout.ItemSizes.Count; i++)
+					layout.ItemSizes[i] = layout.ItemSizes[i] / total;
+			}
+			else
+			{
+				var equal = 1.0 / layout.ItemSizes.Count;
+				for (int i = 0; i < layout.ItemSizes.Count; i++)
+					layout.ItemSizes[i] = equal;
+			}
+		}
+		NormalizeItemSizes(layout);
+	}
+
+	void ApplyFloatingPanels(LayoutConfig config)
+	{
+		if (floatingLayer == null) return;
+		for (int i = 0; i < config.Panels.Count; i++)
+		{
+			var state = config.Panels[i];
+			if (state.IsHidden || !state.IsFloating) continue;
+			var panel = FindPanelByTitle(state.Title);
+			if (panel == null) continue;
+			panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
+		}
+	}
+
+	DockablePanel? FindPanelByTitle(string title)
+	{
+		var panels = GetAllPanels();
+		for (int i = 0; i < panels.Count; i++)
+		{
+			if (panels[i].Title == title)
+				return panels[i];
+		}
+		return null;
+	}
+
+	List<DockablePanel> GetAllPanels()
+	{
+		var list = new List<DockablePanel>();
+		if (layersPanel != null) list.Add(layersPanel);
+		if (propertiesPanel != null) list.Add(propertiesPanel);
+		if (colorPanel != null) list.Add(colorPanel);
+		if (brushesPanel != null) list.Add(brushesPanel);
+		if (historyPanel != null) list.Add(historyPanel);
+		if (timelinePanel != null) list.Add(timelinePanel);
+		return list;
 	}
 
 	void HookDockHostEvents()
@@ -752,6 +1191,50 @@ public partial class MainView : UserControl
 		return true;
 	}
 
+	PanelState? GetPanelState(string title)
+	{
+		if (layoutConfig == null) return null;
+		for (int i = 0; i < layoutConfig.Panels.Count; i++)
+		{
+			if (layoutConfig.Panels[i].Title == title)
+				return layoutConfig.Panels[i];
+		}
+		return null;
+	}
+
+	DockHost? GetDockHostByEdge(string edge)
+	{
+		if (edge == DockEdge.Left.ToString()) return leftDockHost;
+		if (edge == DockEdge.Right.ToString()) return rightDockHost;
+		if (edge == DockEdge.Bottom.ToString()) return bottomDockHost;
+		return null;
+	}
+
+	void ApplyPanelStateToDockHost(DockablePanel panel, PanelState state, DockHost host)
+	{
+		var layout = host.GetLayout();
+		NormalizeItemSizes(layout);
+		int dockIndex = Math.Clamp(state.DockIndex, 0, layout.Items.Count);
+		if (state.IsTabbed && dockIndex < layout.Items.Count)
+		{
+			var item = layout.Items[dockIndex];
+			int tabIndex = Math.Clamp(state.TabIndex, 0, item.Panels.Count);
+			item.Panels.Insert(tabIndex, panel.Title);
+			if (state.WasActive)
+				item.ActiveIndex = tabIndex;
+		}
+		else
+		{
+			layout.Items.Insert(dockIndex, new DockHostItemLayout
+			{
+				Panels = new List<string> { panel.Title },
+				ActiveIndex = 0
+			});
+			layout.ItemSizes.Insert(dockIndex, state.DockedProportion > 0 ? state.DockedProportion : 1.0);
+		}
+		host.ApplyLayout(layout, FindPanelByTitle);
+	}
+
 	bool IsPanelVisible(DockablePanel? panel)
 	{
 		return panel != null && panel.Parent != null;
@@ -760,29 +1243,50 @@ public partial class MainView : UserControl
 	void HidePanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
+
+		// Capture current docked proportion for this panel so we can restore it later
+		var prevConfig = BuildLayoutConfig();
+		var prevState = GetPanelStateFromConfig(prevConfig, panel.Title);
+		if (prevState != null)
+		{
+			prevState.IsHidden = true;
+			// keep DockedProportion in prevState as is
+			layoutConfig = prevConfig;
+		}
+
 		if (panel.DockHost != null && panel.Parent is Grid)
 		{
-			panel.DockHost.RemovePanel(panel);
+			var host = panel.DockHost;
+			var layout = host.GetLayout();
+			RemovePanelFromDockHostLayout(layout, panel.Title);
+			host.ApplyLayout(layout, FindPanelByTitle);
+			ScheduleLayoutSave();
 			return;
 		}
-		if (panel.Parent is DockHost host)
+		if (panel.Parent is DockHost parentHost)
 		{
-			host.RemovePanel(panel);
+			var layout = parentHost.GetLayout();
+			RemovePanelFromDockHostLayout(layout, panel.Title);
+			parentHost.ApplyLayout(layout, FindPanelByTitle);
+			ScheduleLayoutSave();
 			return;
 		}
 		if (panel.Parent is Canvas canvas)
 		{
 			canvas.Children.Remove(panel);
+			ScheduleLayoutSave();
 			return;
 		}
 		if (panel.Parent is Panel parentPanel)
 		{
 			parentPanel.Children.Remove(panel);
+			ScheduleLayoutSave();
 			return;
 		}
 		if (panel.Parent is ContentControl contentControl)
 		{
 			contentControl.Content = null;
+			ScheduleLayoutSave();
 		}
 	}
 
@@ -797,17 +1301,29 @@ public partial class MainView : UserControl
 	void ShowPanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
-		if (panel.Parent != null) return;
-		var host = panel.DockHost;
-		if (host != null)
+		var state = GetPanelState(panel.Title);
+		if (state != null)
 		{
-			host.AddPanel(panel);
-			return;
+			state.IsHidden = false;
+			if (state.IsFloating && floatingLayer != null)
+			{
+				panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
+				ScheduleLayoutSave();
+				return;
+			}
+			var host = GetDockHostByEdge(state.DockEdge);
+			if (host != null)
+			{
+				ApplyPanelStateToDockHost(panel, state, host);
+				ScheduleLayoutSave();
+				return;
+			}
 		}
-		if (floatingLayer != null)
-		{
-			floatingLayer.Children.Add(panel);
-		}
+		if (panel.DockHost != null)
+			panel.DockHost.AddPanel(panel);
+		else if (leftDockHost != null)
+			leftDockHost.AddPanel(panel);
+		ScheduleLayoutSave();
 	}
 
 	Canvas? FindFloatingLayer()

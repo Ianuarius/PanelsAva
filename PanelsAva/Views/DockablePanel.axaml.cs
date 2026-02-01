@@ -23,6 +23,7 @@ public partial class DockablePanel : UserControl
 	public TabGroup? TabGroup { get; set; }
 
 	public event EventHandler? CloseRequested;
+	public event EventHandler? LayoutChanged;
 
 	Border? titleBar;
 	StackPanel? tabStrip;
@@ -131,6 +132,7 @@ public partial class DockablePanel : UserControl
 				}
 			}
 		}
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	protected override Size MeasureOverride(Size availableSize)
@@ -272,6 +274,7 @@ public partial class DockablePanel : UserControl
 			FloatingLayer?.Children.Remove(previewBorder);
 			previewBorder = null;
 		}
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void DragCaptureLost(PointerCaptureLostEventArgs e)
@@ -380,6 +383,7 @@ public partial class DockablePanel : UserControl
 		SetFloating(true);
 		currentPointer?.Capture(dragHandle ?? titleBar);
 		isTransitioningToFloat = false;
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void MoveFloating(Point posRoot)
@@ -410,6 +414,7 @@ public partial class DockablePanel : UserControl
 		
 		Canvas.SetLeft(this, panelPos.X);
 		Canvas.SetTop(this, panelPos.Y);
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void UpdateDockPreview(Point posRoot, Visual visualRoot)
@@ -591,6 +596,17 @@ public partial class DockablePanel : UserControl
 		this.SetValue(Panel.ZIndexProperty, 1);
 		Canvas.SetLeft(this, left);
 		Canvas.SetTop(this, top);
+	}
+
+	public void SetFloatingBounds(Canvas layer, double left, double top, double width, double height)
+	{
+		MoveToFloatingLayer(layer, left, top);
+		if (width > 0)
+			Width = width;
+		if (height > 0)
+			Height = height;
+		SetFloating(true);
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
