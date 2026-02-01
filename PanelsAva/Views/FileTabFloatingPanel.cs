@@ -17,6 +17,7 @@ public class FileTabFloatingPanel : Border
 	readonly Button closeButton;
 	readonly Image image;
 	bool isDragging;
+	bool isActive;
 	double dragOffsetX;
 	double dragOffsetY;
 	Pointer? currentPointer;
@@ -111,6 +112,12 @@ public class FileTabFloatingPanel : Border
 		image.Source = document.Bitmap;
 	}
 
+	public void SetActive(bool active)
+	{
+		isActive = active;
+		titleBar.Background = new SolidColorBrush(isActive ? Color.FromRgb(70, 70, 100) : Color.FromRgb(50, 50, 70));
+	}
+
 	public void BeginExternalDrag(IPointer pointer, Point posRoot, double offsetX, double offsetY)
 	{
 		dragOffsetX = offsetX;
@@ -141,7 +148,7 @@ public class FileTabFloatingPanel : Border
 		var e2 = e.GetCurrentPoint(titleBar);
 		if (!e2.Properties.IsLeftButtonPressed) return;
 
-		owner.SelectDocument(document);
+		owner.SelectDocument(document, false);
 
 		var visualRoot = this.GetVisualRoot() as Visual;
 		if (visualRoot == null) return;

@@ -90,7 +90,7 @@ public partial class MainView : UserControl
 
 	void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		if (e.PropertyName == nameof(MainViewModel.CurrentDocumentIndex) || e.PropertyName == nameof(MainViewModel.CurrentDocument))
+		if (e.PropertyName == nameof(MainViewModel.CurrentDocumentIndex) || e.PropertyName == nameof(MainViewModel.CurrentDocument) || e.PropertyName == nameof(MainViewModel.SelectedDocument))
 		{
 			RefreshFileTabStrip();
 			UpdateCanvas();
@@ -110,13 +110,7 @@ public partial class MainView : UserControl
 		if (canvasImage == null) return;
 		if (currentViewModel == null) return;
 		var currentDoc = currentViewModel.CurrentDocument;
-		if (currentDoc != null && floatingDocuments.Contains(currentDoc))
-		{
-			var newIndex = GetFirstDockedDocumentIndex();
-			if (newIndex != currentViewModel.CurrentDocumentIndex)
-				currentViewModel.CurrentDocumentIndex = newIndex;
-		}
-		canvasImage.Source = currentViewModel.CurrentDocument?.Bitmap;
+		canvasImage.Source = (currentDoc != null && !floatingDocuments.Contains(currentDoc)) ? currentDoc.Bitmap : null;
 	}
 
 	void RefreshFileTabStrip()
@@ -139,7 +133,7 @@ public partial class MainView : UserControl
 		for (int i = 0; i < vm.OpenDocuments.Count; i++)
 		{
 			var doc = vm.OpenDocuments[i];
-			var isActive = i == vm.CurrentDocumentIndex;
+			var isActive = doc == vm.SelectedDocument;
 
 			if (!fileTabs.TryGetValue(doc, out var tab))
 			{
@@ -156,6 +150,7 @@ public partial class MainView : UserControl
 			tab.SetFloating(false);
 			fileTabStrip.Children.Add(tab);
 		}
+		UpdateFloatingPanelActiveStates();
 		ClearDockPreview();
 	}
 
@@ -166,6 +161,14 @@ public partial class MainView : UserControl
 		if (!floatingLayer.Children.Contains(panel))
 			floatingLayer.Children.Add(panel);
 		panel.UpdateFromDocument();
+		panel.SetActive(currentViewModel?.SelectedDocument == doc);
+	}
+
+	void UpdateFloatingPanelActiveStates()
+	{
+		if (currentViewModel == null) return;
+		foreach (var pair in floatingPanels)
+			pair.Value.SetActive(pair.Key == currentViewModel.SelectedDocument);
 	}
 
 	void RemoveTabForDocument(Document doc)
@@ -183,12 +186,16 @@ public partial class MainView : UserControl
 		}
 	}
 
-	public void SelectDocument(Document doc)
+	public void SelectDocument(Document doc, bool updateCanvas)
 	{
 		if (currentViewModel == null) return;
-		var index = currentViewModel.OpenDocuments.IndexOf(doc);
-		if (index >= 0)
-			currentViewModel.CurrentDocumentIndex = index;
+		currentViewModel.SelectedDocument = doc;
+		if (updateCanvas)
+		{
+			var index = currentViewModel.OpenDocuments.IndexOf(doc);
+			if (index >= 0)
+				currentViewModel.CurrentDocumentIndex = index;
+		}
 	}
 
 	public void CloseDocument(Document doc)
@@ -411,7 +418,7 @@ public partial class MainView : UserControl
 
 	void UpdatePanelFileNames()
 	{
-		var name = currentViewModel?.CurrentDocument?.Name ?? string.Empty;
+		var name = currentViewModel?.SelectedDocument?.Name ?? string.Empty;
 		if (layersPanel?.Content is LayersPanel layersPanelView && layersPanelView.DataContext is ViewModels.LayersViewModel layersVm)
 			layersVm.CurrentFileName = name;
 		if (propertiesPanel?.Content is PropertiesPanel propertiesPanelView && propertiesPanelView.DataContext is ViewModels.PropertiesViewModel propertiesVm)

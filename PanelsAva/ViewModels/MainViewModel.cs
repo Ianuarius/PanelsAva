@@ -17,6 +17,7 @@ public class MainViewModel : ViewModelBase
 	public ObservableCollection<Document> OpenDocuments { get; } = new();
 	
 	int currentDocumentIndex;
+	Document? selectedDocument;
 	public int CurrentDocumentIndex
 	{
 		get => currentDocumentIndex;
@@ -25,8 +26,15 @@ public class MainViewModel : ViewModelBase
 			if (SetProperty(ref currentDocumentIndex, value))
 			{
 				OnPropertyChanged(nameof(CurrentDocument));
+				SelectedDocument = CurrentDocument;
 			}
 		}
+	}
+
+	public Document? SelectedDocument
+	{
+		get => selectedDocument;
+		set => SetProperty(ref selectedDocument, value);
 	}
 
 	public Document? CurrentDocument => CurrentDocumentIndex >= 0 && CurrentDocumentIndex < OpenDocuments.Count 

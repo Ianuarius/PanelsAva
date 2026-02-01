@@ -115,7 +115,7 @@ public class FileTabItem : Border
 		var e2 = e.GetCurrentPoint(this);
 		if (!e2.Properties.IsLeftButtonPressed) return;
 
-		owner.SelectDocument(document);
+		owner.SelectDocument(document, true);
 
 		var visualRoot = this.GetVisualRoot() as Visual;
 		if (visualRoot == null) return;
