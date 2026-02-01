@@ -26,7 +26,16 @@
 		</Grid.ColumnDefinitions>
 		<views:DockHost x:Name="LeftDockHost" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 		<GridSplitter Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
-		<Border Grid.Row="0" Grid.Column="2" Background="#1C1C1C" />
+		<Grid Grid.Row="0" Grid.Column="2">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="*" />
+			</Grid.RowDefinitions>
+			<StackPanel x:Name="FileTabStrip" Orientation="Horizontal" Grid.Row="0" Background="#2A2A2A" Height="20" />
+			<Border Grid.Row="1" Background="#1C1C1C">
+				<Image x:Name="CanvasImage" Stretch="Uniform" />
+			</Border>
+		</Grid>
 		<GridSplitter Grid.Row="0" Grid.Column="3" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
 		<views:DockHost x:Name="RightDockHost" Grid.Row="0" Grid.Column="4" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 		<GridSplitter Grid.Row="1" Grid.Column="2" Background="#646464" ResizeDirection="Rows" Height="4" />

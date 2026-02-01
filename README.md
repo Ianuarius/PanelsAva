@@ -53,6 +53,15 @@ Where to look in this repo
 - Dockable panel example: [PanelsAva/Views/DockablePanel.axaml](PanelsAva/Views/DockablePanel.axaml)
 - Example ViewModels: [PanelsAva/ViewModels](PanelsAva/ViewModels)
 
+TODO
+----
+- Collapsing empty DockHosts.
+- Locking the Workspace.
+- Saving and loading Workspaces.
+- Saving/loading where the panel was closed.
+- Dockable toolbar.
+- File tabs.
+
 License
 -------
 CC BY 4.0

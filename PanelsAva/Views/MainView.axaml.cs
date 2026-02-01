@@ -1,6 +1,11 @@
 ﻿using Avalonia.Controls;
 using Avalonia.VisualTree;
 using System;
+using PanelsAva.ViewModels;
+using Avalonia.Media;
+using Avalonia.Layout;
+using System.Collections.Specialized;
+using Avalonia.Input;
 
 namespace PanelsAva.Views;
 
@@ -16,11 +21,126 @@ public partial class MainView : UserControl
 	DockablePanel? brushesPanel;
 	DockablePanel? historyPanel;
 	DockablePanel? timelinePanel;
+	StackPanel? fileTabStrip;
+	Image? canvasImage;
+	MainViewModel? currentViewModel;
 
 	public MainView()
 	{
 		InitializeComponent();
 		Loaded += OnLoaded;
+		DataContextChanged += OnDataContextChanged;
+	}
+
+	void OnDataContextChanged(object? sender, EventArgs e)
+	{
+		SetViewModel(DataContext as MainViewModel);
+	}
+
+	void SetViewModel(MainViewModel? vm)
+	{
+		if (currentViewModel != null)
+		{
+			currentViewModel.OpenDocuments.CollectionChanged -= OnDocumentsChanged;
+			currentViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+		}
+
+		currentViewModel = vm;
+
+		if (currentViewModel != null)
+		{
+			currentViewModel.OpenDocuments.CollectionChanged += OnDocumentsChanged;
+			currentViewModel.PropertyChanged += OnViewModelPropertyChanged;
+		}
+
+		RefreshFileTabStrip();
+		UpdateCanvas();
+		UpdatePanelFileNames();
+	}
+
+	void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(MainViewModel.CurrentDocumentIndex) || e.PropertyName == nameof(MainViewModel.CurrentDocument))
+		{
+			RefreshFileTabStrip();
+			UpdateCanvas();
+			UpdatePanelFileNames();
+		}
+	}
+
+	void OnDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+	{
+		RefreshFileTabStrip();
+	}
+
+	void UpdateCanvas()
+	{
+		if (canvasImage == null) return;
+		if (currentViewModel == null) return;
+		canvasImage.Source = currentViewModel.CurrentDocument?.Bitmap;
+	}
+
+	void RefreshFileTabStrip()
+	{
+		if (fileTabStrip == null) return;
+		if (currentViewModel == null) return;
+		var vm = currentViewModel;
+
+		fileTabStrip.Children.Clear();
+
+		for (int i = 0; i < vm.OpenDocuments.Count; i++)
+		{
+			var doc = vm.OpenDocuments[i];
+			var isActive = i == vm.CurrentDocumentIndex;
+
+			var tabBorder = new Border
+			{
+				Background = new SolidColorBrush(isActive ? Color.FromRgb(70, 70, 100) : Color.FromRgb(50, 50, 70)),
+				Padding = new Avalonia.Thickness(8, 2, 8, 2),
+				BorderBrush = new SolidColorBrush(Color.FromRgb(30, 30, 50)),
+				BorderThickness = new Avalonia.Thickness(1, 0, 1, 0),
+				Tag = i
+			};
+
+			var tabText = new TextBlock
+			{
+				Text = doc.Name,
+				FontSize = 12,
+				VerticalAlignment = VerticalAlignment.Center,
+				HorizontalAlignment = HorizontalAlignment.Left,
+				Foreground = new SolidColorBrush(Colors.White)
+			};
+			tabBorder.Child = tabText;
+
+			tabBorder.PointerPressed += FileTabOnPointerPressed;
+
+			fileTabStrip.Children.Add(tabBorder);
+		}
+	}
+
+	void FileTabOnPointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (sender is Border border && border.Tag is int index && currentViewModel != null)
+		{
+			currentViewModel.CurrentDocumentIndex = index;
+		}
+	}
+
+	void UpdatePanelFileNames()
+	{
+		var name = currentViewModel?.CurrentDocument?.Name ?? string.Empty;
+		if (layersPanel?.Content is LayersPanel layersPanelView && layersPanelView.DataContext is ViewModels.LayersViewModel layersVm)
+			layersVm.CurrentFileName = name;
+		if (propertiesPanel?.Content is PropertiesPanel propertiesPanelView && propertiesPanelView.DataContext is ViewModels.PropertiesViewModel propertiesVm)
+			propertiesVm.CurrentFileName = name;
+		if (colorPanel?.Content is ColorPanel colorPanelView && colorPanelView.DataContext is ViewModels.ColorViewModel colorVm)
+			colorVm.CurrentFileName = name;
+		if (brushesPanel?.Content is BrushesPanel brushesPanelView && brushesPanelView.DataContext is ViewModels.BrushesViewModel brushesVm)
+			brushesVm.CurrentFileName = name;
+		if (historyPanel?.Content is HistoryPanel historyPanelView && historyPanelView.DataContext is ViewModels.HistoryViewModel historyVm)
+			historyVm.CurrentFileName = name;
+		if (timelinePanel?.Content is TimelinePanel timelinePanelView && timelinePanelView.DataContext is ViewModels.TimelineViewModel timelineVm)
+			timelineVm.CurrentFileName = name;
 	}
 
 	void OnLoaded(object? sender, EventArgs e)
@@ -28,7 +148,12 @@ public partial class MainView : UserControl
 		leftDockHost = this.FindControl<DockHost>("LeftDockHost");
 		rightDockHost = this.FindControl<DockHost>("RightDockHost");
 		bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
+		fileTabStrip = this.FindControl<StackPanel>("FileTabStrip");
+		canvasImage = this.FindControl<Image>("CanvasImage");
 		floatingLayer = FindFloatingLayer();
+		if (DataContext == null && this.Parent is Control parentControl && parentControl.DataContext != null)
+			DataContext = parentControl.DataContext;
+		SetViewModel(DataContext as MainViewModel);
 
 		if (layersPanel != null) return;
 		

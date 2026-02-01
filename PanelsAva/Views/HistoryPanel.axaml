@@ -11,6 +11,11 @@
 	</Design.DataContext>
 
 	<Grid Background="#222222">
-		<TextBlock Text="History Panel Placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#CCCCCC" />
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+		<TextBlock Grid.Row="0" Text="{Binding CurrentFileName}" Margin="4" FontSize="10" Foreground="#999999" />
+		<TextBlock Grid.Row="1" Text="History Panel Placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#CCCCCC" />
 	</Grid>
 </UserControl>
