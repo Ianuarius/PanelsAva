@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="40"
+	x:Class="PanelsAva.Views.Toolbar"
+	Background="#2A2A2A">
+	<Grid x:Name="MainGrid">
+		<StackPanel x:Name="ButtonStack" Orientation="Horizontal" Grid.Column="1" Grid.Row="0">
+			<Button Content="✇" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="❤" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="✵" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="○" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="❱" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="✀" Width="40" Height="40" FontSize="20" Padding="0" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+		</StackPanel>
+		<Border x:Name="GripRect" Background="#1E1E1E" Grid.Column="0" Grid.Row="0" Width="20"/>
+	</Grid>
+</UserControl>

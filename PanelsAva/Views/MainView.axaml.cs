@@ -21,6 +21,11 @@ public partial class MainView : UserControl
 	DockHost? leftDockHost;
 	DockHost? rightDockHost;
 	DockHost? bottomDockHost;
+	Toolbar? toolbar;
+	RowDefinition? topToolbarRow;
+	RowDefinition? bottomToolbarRow;
+	ColumnDefinition? leftToolbarColumn;
+	ColumnDefinition? rightToolbarColumn;
 	Grid? mainGrid;
 	GridSplitter? leftDockSplitter;
 	GridSplitter? rightDockSplitter;
@@ -439,18 +444,135 @@ public partial class MainView : UserControl
 			timelineVm.CurrentFileName = name;
 	}
 
+	void OnToolbarPositionChanged(object? sender, ToolbarPosition position)
+	{
+		UpdateToolbarPosition(position);
+		ScheduleLayoutSave();
+	}
+
+	void UpdateToolbarPosition(ToolbarPosition position)
+	{
+		if (toolbar == null || mainGrid == null) return;
+		if (leftDockHost == null || rightDockHost == null || bottomDockHost == null) return;
+
+		const double toolbarSize = 40;
+
+		if (topToolbarRow != null) topToolbarRow.Height = new GridLength(0);
+		if (bottomToolbarRow != null) bottomToolbarRow.Height = new GridLength(0);
+		if (leftToolbarColumn != null) leftToolbarColumn.Width = new GridLength(0);
+		if (rightToolbarColumn != null) rightToolbarColumn.Width = new GridLength(0);
+
+		switch (position)
+		{
+			case ToolbarPosition.Top:
+				if (topToolbarRow != null) topToolbarRow.Height = new GridLength(toolbarSize);
+				Grid.SetRow(toolbar, 0);
+				Grid.SetColumn(toolbar, 1);
+				Grid.SetColumnSpan(toolbar, 5);
+				Grid.SetRowSpan(toolbar, 1);
+				Grid.SetRow(leftDockHost, 1);
+				Grid.SetRowSpan(leftDockHost, 3);
+				Grid.SetRow(leftDockSplitter, 1);
+				Grid.SetRowSpan(leftDockSplitter, 3);
+				Grid.SetRow(rightDockSplitter, 1);
+				Grid.SetRowSpan(rightDockSplitter, 3);
+				Grid.SetRow(rightDockHost, 1);
+				Grid.SetRowSpan(rightDockHost, 3);
+				Grid.SetRow(bottomDockSplitter, 2);
+				Grid.SetRow(bottomDockHost, 3);
+				break;
+			case ToolbarPosition.Bottom:
+				if (bottomToolbarRow != null) bottomToolbarRow.Height = new GridLength(toolbarSize);
+				Grid.SetRow(toolbar, 4);
+				Grid.SetColumn(toolbar, 1);
+				Grid.SetColumnSpan(toolbar, 5);
+				Grid.SetRowSpan(toolbar, 1);
+				Grid.SetRow(leftDockHost, 1);
+				Grid.SetRowSpan(leftDockHost, 3);
+				Grid.SetRow(leftDockSplitter, 1);
+				Grid.SetRowSpan(leftDockSplitter, 3);
+				Grid.SetRow(rightDockSplitter, 1);
+				Grid.SetRowSpan(rightDockSplitter, 3);
+				Grid.SetRow(rightDockHost, 1);
+				Grid.SetRowSpan(rightDockHost, 3);
+				Grid.SetRow(bottomDockSplitter, 2);
+				Grid.SetRow(bottomDockHost, 3);
+				break;
+			case ToolbarPosition.Left:
+				if (leftToolbarColumn != null) leftToolbarColumn.Width = new GridLength(toolbarSize);
+				Grid.SetRow(toolbar, 1);
+				Grid.SetColumn(toolbar, 0);
+				Grid.SetRowSpan(toolbar, 3);
+				Grid.SetColumnSpan(toolbar, 1);
+				Grid.SetRow(leftDockHost, 1);
+				Grid.SetColumn(leftDockHost, 1);
+				Grid.SetRowSpan(leftDockHost, 3);
+				Grid.SetRow(leftDockSplitter, 1);
+				Grid.SetColumn(leftDockSplitter, 2);
+				Grid.SetRowSpan(leftDockSplitter, 3);
+				Grid.SetRow(rightDockSplitter, 1);
+				Grid.SetColumn(rightDockSplitter, 4);
+				Grid.SetRowSpan(rightDockSplitter, 3);
+				Grid.SetRow(rightDockHost, 1);
+				Grid.SetColumn(rightDockHost, 5);
+				Grid.SetRowSpan(rightDockHost, 3);
+				Grid.SetRow(bottomDockSplitter, 2);
+				Grid.SetColumn(bottomDockSplitter, 3);
+				Grid.SetRow(bottomDockHost, 3);
+				Grid.SetColumn(bottomDockHost, 3);
+				break;
+			case ToolbarPosition.Right:
+				if (rightToolbarColumn != null) rightToolbarColumn.Width = new GridLength(toolbarSize);
+				Grid.SetRow(toolbar, 1);
+				Grid.SetColumn(toolbar, 6);
+				Grid.SetRowSpan(toolbar, 3);
+				Grid.SetColumnSpan(toolbar, 1);
+				Grid.SetRow(leftDockHost, 1);
+				Grid.SetColumn(leftDockHost, 1);
+				Grid.SetRowSpan(leftDockHost, 3);
+				Grid.SetRow(leftDockSplitter, 1);
+				Grid.SetColumn(leftDockSplitter, 2);
+				Grid.SetRowSpan(leftDockSplitter, 3);
+				Grid.SetRow(rightDockSplitter, 1);
+				Grid.SetColumn(rightDockSplitter, 4);
+				Grid.SetRowSpan(rightDockSplitter, 3);
+				Grid.SetRow(rightDockHost, 1);
+				Grid.SetColumn(rightDockHost, 5);
+				Grid.SetRowSpan(rightDockHost, 3);
+				Grid.SetRow(bottomDockSplitter, 2);
+				Grid.SetColumn(bottomDockSplitter, 3);
+				Grid.SetRow(bottomDockHost, 3);
+				Grid.SetColumn(bottomDockHost, 3);
+				break;
+		}
+	}
+
 	void OnLoaded(object? sender, EventArgs e)
 	{
 		leftDockHost = this.FindControl<DockHost>("LeftDockHost");
 		rightDockHost = this.FindControl<DockHost>("RightDockHost");
 		bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
+		toolbar = this.FindControl<Toolbar>("ToolbarControl");
 		mainGrid = this.FindControl<Grid>("MainGrid");
+		if (mainGrid != null)
+		{
+			topToolbarRow = mainGrid.RowDefinitions.Count > 0 ? mainGrid.RowDefinitions[0] : null;
+			bottomToolbarRow = mainGrid.RowDefinitions.Count > 4 ? mainGrid.RowDefinitions[4] : null;
+			leftToolbarColumn = mainGrid.ColumnDefinitions.Count > 0 ? mainGrid.ColumnDefinitions[0] : null;
+			rightToolbarColumn = mainGrid.ColumnDefinitions.Count > 6 ? mainGrid.ColumnDefinitions[6] : null;
+		}
 		leftDockSplitter = this.FindControl<GridSplitter>("LeftDockSplitter");
 		rightDockSplitter = this.FindControl<GridSplitter>("RightDockSplitter");
 		bottomDockSplitter = this.FindControl<GridSplitter>("BottomDockSplitter");
 		fileTabStrip = this.FindControl<StackPanel>("FileTabStrip");
 		canvasImage = this.FindControl<Image>("CanvasImage");
 		floatingLayer = FindFloatingLayer();
+		if (toolbar != null)
+		{
+			toolbar.FloatingLayer = floatingLayer;
+			toolbar.PositionChanged += OnToolbarPositionChanged;
+			UpdateToolbarPosition(toolbar.Position);
+		}
 		InitDockSizes();
 		HookDockHostEvents();
 		if (leftDockHost != null) leftDockHost.DockEdge = DockEdge.Left;
@@ -652,11 +774,11 @@ public partial class MainView : UserControl
 	LayoutConfig? GetProfileConfig(string name)
 	{
 		if (workspaceProfiles == null) return null;
-		if (IsDefaultProfile(name) && defaultLayoutConfig != null)
-			return defaultLayoutConfig;
 		if (workspaceProfiles.Profiles.TryGetValue(name, out var config))
 			return config;
-		return defaultLayoutConfig;
+		if (IsDefaultProfile(name) && defaultLayoutConfig != null)
+			return defaultLayoutConfig;
+		return null;
 	}
 
 	bool IsDefaultProfile(string name)
@@ -712,13 +834,15 @@ public partial class MainView : UserControl
 		}
 		if (string.IsNullOrWhiteSpace(activeProfileName))
 			activeProfileName = workspaceProfiles.ActiveProfile;
-		if (IsDefaultProfile(activeProfileName))
-		{
-			layoutConfig = BuildLayoutConfig();
-			return;
-		}
 		var activeConfig = BuildLayoutConfig();
 		layoutConfig = activeConfig;
+		if (IsDefaultProfile(activeProfileName))
+		{
+			defaultLayoutConfig = activeConfig;
+			workspaceProfiles.Profiles[defaultProfileName] = activeConfig;
+			WriteWorkspaceProfiles(workspaceProfiles);
+			return;
+		}
 		workspaceProfiles.Profiles[activeProfileName] = activeConfig;
 		WriteWorkspaceProfiles(workspaceProfiles);
 	}
@@ -732,6 +856,8 @@ public partial class MainView : UserControl
 		config.LeftDockWidth = GetLeftDockWidth();
 		config.RightDockWidth = GetRightDockWidth();
 		config.BottomDockHeight = GetBottomDockHeight();
+		if (toolbar != null)
+			config.ToolbarPosition = toolbar.Position.ToString();
 
 		var existingStates = new Dictionary<string, PanelState>();
 		if (layoutConfig != null)
@@ -838,22 +964,22 @@ public partial class MainView : UserControl
 
 	double GetLeftDockWidth()
 	{
-		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 5) return leftDockWidth.Value;
-		var leftCol = mainGrid.ColumnDefinitions[0];
+		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 2) return leftDockWidth.Value;
+		var leftCol = mainGrid.ColumnDefinitions[1];
 		return leftCol.Width.Value > 0 ? leftCol.Width.Value : leftDockWidth.Value;
 	}
 
 	double GetRightDockWidth()
 	{
-		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 5) return rightDockWidth.Value;
-		var rightCol = mainGrid.ColumnDefinitions[4];
+		if (mainGrid == null || mainGrid.ColumnDefinitions.Count < 6) return rightDockWidth.Value;
+		var rightCol = mainGrid.ColumnDefinitions[5];
 		return rightCol.Width.Value > 0 ? rightCol.Width.Value : rightDockWidth.Value;
 	}
 
 	double GetBottomDockHeight()
 	{
-		if (mainGrid == null || mainGrid.RowDefinitions.Count < 3) return bottomDockHeight.Value;
-		var bottomRow = mainGrid.RowDefinitions[2];
+		if (mainGrid == null || mainGrid.RowDefinitions.Count < 4) return bottomDockHeight.Value;
+		var bottomRow = mainGrid.RowDefinitions[3];
 		return bottomRow.Height.Value > 0 ? bottomRow.Height.Value : bottomDockHeight.Value;
 	}
 
@@ -864,20 +990,28 @@ public partial class MainView : UserControl
 		try
 		{
 			layoutConfig = config;
-			if (mainGrid.ColumnDefinitions.Count >= 5)
+			if (mainGrid.ColumnDefinitions.Count >= 6)
 			{
 				if (config.LeftDockWidth > 0)
-					mainGrid.ColumnDefinitions[0].Width = new GridLength(config.LeftDockWidth, GridUnitType.Pixel);
+					mainGrid.ColumnDefinitions[1].Width = new GridLength(config.LeftDockWidth, GridUnitType.Pixel);
 				if (config.RightDockWidth > 0)
-					mainGrid.ColumnDefinitions[4].Width = new GridLength(config.RightDockWidth, GridUnitType.Pixel);
-				mainGrid.ColumnDefinitions[1].Width = leftSplitterWidth;
-				mainGrid.ColumnDefinitions[3].Width = rightSplitterWidth;
+					mainGrid.ColumnDefinitions[5].Width = new GridLength(config.RightDockWidth, GridUnitType.Pixel);
+				mainGrid.ColumnDefinitions[2].Width = leftSplitterWidth;
+				mainGrid.ColumnDefinitions[4].Width = rightSplitterWidth;
 			}
-			if (mainGrid.RowDefinitions.Count >= 3)
+			if (mainGrid.RowDefinitions.Count >= 4)
 			{
 				if (config.BottomDockHeight > 0)
-					mainGrid.RowDefinitions[2].Height = new GridLength(config.BottomDockHeight, GridUnitType.Pixel);
-				mainGrid.RowDefinitions[1].Height = bottomSplitterHeight;
+					mainGrid.RowDefinitions[3].Height = new GridLength(config.BottomDockHeight, GridUnitType.Pixel);
+				mainGrid.RowDefinitions[2].Height = bottomSplitterHeight;
+			}
+			if (toolbar != null && !string.IsNullOrEmpty(config.ToolbarPosition))
+			{
+				if (Enum.TryParse<ToolbarPosition>(config.ToolbarPosition, out var pos))
+				{
+					toolbar.Position = pos;
+					UpdateToolbarPosition(pos);
+				}
 			}
 
 			ClearAllPanels();
@@ -1052,12 +1186,12 @@ public partial class MainView : UserControl
 	void InitDockSizes()
 	{
 		if (mainGrid == null) return;
-		if (mainGrid.ColumnDefinitions.Count >= 5)
+		if (mainGrid.ColumnDefinitions.Count >= 6)
 		{
-			var leftCol = mainGrid.ColumnDefinitions[0];
-			var leftSplitCol = mainGrid.ColumnDefinitions[1];
-			var rightCol = mainGrid.ColumnDefinitions[4];
-			var rightSplitCol = mainGrid.ColumnDefinitions[3];
+			var leftCol = mainGrid.ColumnDefinitions[1];
+			var leftSplitCol = mainGrid.ColumnDefinitions[2];
+			var rightCol = mainGrid.ColumnDefinitions[5];
+			var rightSplitCol = mainGrid.ColumnDefinitions[4];
 			leftDockWidth = leftCol.Width;
 			rightDockWidth = rightCol.Width;
 			leftSplitterWidth = leftSplitCol.Width;
@@ -1067,10 +1201,10 @@ public partial class MainView : UserControl
 			rightDockMinWidth = rightCol.MinWidth;
 			rightDockMaxWidth = rightCol.MaxWidth;
 		}
-		if (mainGrid.RowDefinitions.Count >= 3)
+		if (mainGrid.RowDefinitions.Count >= 4)
 		{
-			var splitRow = mainGrid.RowDefinitions[1];
-			var bottomRow = mainGrid.RowDefinitions[2];
+			var splitRow = mainGrid.RowDefinitions[2];
+			var bottomRow = mainGrid.RowDefinitions[3];
 			bottomSplitterHeight = splitRow.Height;
 			bottomDockHeight = bottomRow.Height;
 			bottomDockMinHeight = bottomRow.MinHeight;
@@ -1089,9 +1223,9 @@ public partial class MainView : UserControl
 	void UpdateLeftDockSize()
 	{
 		if (leftDockHost == null || mainGrid == null) return;
-		if (mainGrid.ColumnDefinitions.Count < 2) return;
-		var leftCol = mainGrid.ColumnDefinitions[0];
-		var splitCol = mainGrid.ColumnDefinitions[1];
+		if (mainGrid.ColumnDefinitions.Count < 3) return;
+		var leftCol = mainGrid.ColumnDefinitions[1];
+		var splitCol = mainGrid.ColumnDefinitions[2];
 		var hasPanels = leftDockHost.HasPanels;
 		if (hasPanels)
 		{
@@ -1132,9 +1266,9 @@ public partial class MainView : UserControl
 	void UpdateRightDockSize()
 	{
 		if (rightDockHost == null || mainGrid == null) return;
-		if (mainGrid.ColumnDefinitions.Count < 5) return;
-		var rightCol = mainGrid.ColumnDefinitions[4];
-		var splitCol = mainGrid.ColumnDefinitions[3];
+		if (mainGrid.ColumnDefinitions.Count < 6) return;
+		var rightCol = mainGrid.ColumnDefinitions[5];
+		var splitCol = mainGrid.ColumnDefinitions[4];
 		var hasPanels = rightDockHost.HasPanels;
 		if (hasPanels)
 		{
@@ -1175,9 +1309,9 @@ public partial class MainView : UserControl
 	void UpdateBottomDockSize()
 	{
 		if (bottomDockHost == null || mainGrid == null) return;
-		if (mainGrid.RowDefinitions.Count < 3) return;
-		var splitRow = mainGrid.RowDefinitions[1];
-		var bottomRow = mainGrid.RowDefinitions[2];
+		if (mainGrid.RowDefinitions.Count < 4) return;
+		var splitRow = mainGrid.RowDefinitions[2];
+		var bottomRow = mainGrid.RowDefinitions[3];
 		var hasPanels = bottomDockHost.HasPanels;
 		if (hasPanels)
 		{

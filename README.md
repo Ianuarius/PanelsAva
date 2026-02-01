@@ -14,10 +14,12 @@ Features
 - Dynamic canvas expansion when dock hosts are empty, with hot zones for re-docking panels.
 - Persistent panel layouts: positions, orders, sizes, and floating states are automatically saved and restored across application sessions.
 - Hidden panels can be reopened from the Window menu and will appear in their last known location, size (relative, more or less), and state.
-- Layout can be locked/unlocked from the Window menu.
+- Layout can be locked/unlocked from the Window menu, which prevents panels from detaching from a dock.
 - Layouts can be saved and loaded. You can also reset back to default workspace.
+- Tool bar that you can dock to the sides of the window.
 - Example panels included (Layers, Brushes, Color, History, Properties, Timeline). Placeholder content reacts to selected file.
 - Example file tabs with sample images opened in a Canvas control.
+- Example tool bar icons.
 
 Quick start
 -----------
@@ -62,10 +64,6 @@ Where to look in this repo
 - Dock host control: [PanelsAva/Views/DockHost.axaml](PanelsAva/Views/DockHost.axaml)
 - Dockable panel example: [PanelsAva/Views/DockablePanel.axaml](PanelsAva/Views/DockablePanel.axaml)
 - Example ViewModels: [PanelsAva/ViewModels](PanelsAva/ViewModels)
-
-TODO
-----
-- Dockable toolbar.
 
 License
 -------

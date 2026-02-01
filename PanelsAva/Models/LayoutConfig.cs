@@ -10,6 +10,7 @@ public class LayoutConfig
 	public double LeftDockWidth { get; set; }
 	public double RightDockWidth { get; set; }
 	public double BottomDockHeight { get; set; }
+	public string ToolbarPosition { get; set; } = "Top";
 	public List<PanelState> Panels { get; set; } = new();
 }
 
