@@ -54,6 +54,7 @@ public partial class MainView : UserControl
 	LayoutConfig? layoutConfig;
 	DispatcherTimer? layoutSaveTimer;
 	bool isApplyingLayout;
+	bool isWorkspaceLocked;
 
 	public MainView()
 	{
@@ -527,6 +528,7 @@ public partial class MainView : UserControl
 		UpdateDockHostSizes();
 		HookLayoutEvents();
 		LoadAndApplyLayout();
+		UpdatePanelFloatability();
 	}
 
 	void HookLayoutEvents()
@@ -1179,12 +1181,32 @@ public partial class MainView : UserControl
 		return TogglePanel(timelinePanel);
 	}
 
+	public bool ToggleWorkspaceLock()
+	{
+		isWorkspaceLocked = !isWorkspaceLocked;
+		UpdatePanelFloatability();
+		return isWorkspaceLocked;
+	}
+
+	void UpdatePanelFloatability()
+	{
+		var canFloat = !isWorkspaceLocked;
+		if (layersPanel != null) layersPanel.CanFloat = canFloat;
+		if (propertiesPanel != null) propertiesPanel.CanFloat = canFloat;
+		if (colorPanel != null) colorPanel.CanFloat = canFloat;
+		if (brushesPanel != null) brushesPanel.CanFloat = canFloat;
+		if (historyPanel != null) historyPanel.CanFloat = canFloat;
+		if (timelinePanel != null) timelinePanel.CanFloat = canFloat;
+	}
+
 	public bool IsLayersPanelVisible => IsPanelVisible(layersPanel);
 	public bool IsPropertiesPanelVisible => IsPanelVisible(propertiesPanel);
 	public bool IsColorPanelVisible => IsPanelVisible(colorPanel);
 	public bool IsBrushesPanelVisible => IsPanelVisible(brushesPanel);
 	public bool IsHistoryPanelVisible => IsPanelVisible(historyPanel);
 	public bool IsTimelinePanelVisible => IsPanelVisible(timelinePanel);
+
+	public bool IsWorkspaceLocked => isWorkspaceLocked;
 
 	bool TogglePanel(DockablePanel? panel)
 	{

@@ -1,5 +1,6 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 
 namespace PanelsAva.Views;
 
@@ -12,6 +13,7 @@ public partial class MainWindow : Window
 	MenuItem? brushesMenuItem;
 	MenuItem? historyMenuItem;
 	MenuItem? timelineMenuItem;
+	MenuItem? lockWorkspaceMenuItem;
 
 	public MainWindow()
 	{
@@ -29,6 +31,7 @@ public partial class MainWindow : Window
 		brushesMenuItem = this.FindControl<MenuItem>("BrushesMenuItem");
 		historyMenuItem = this.FindControl<MenuItem>("HistoryMenuItem");
 		timelineMenuItem = this.FindControl<MenuItem>("TimelineMenuItem");
+		lockWorkspaceMenuItem = this.FindControl<MenuItem>("LockWorkspaceMenuItem");
 		UpdateMenuChecks();
 	}
 
@@ -40,54 +43,111 @@ public partial class MainWindow : Window
 	void UpdateMenuChecks()
 	{
 		if (mainView == null) return;
-		if (layersMenuItem != null) layersMenuItem.IsChecked = mainView.IsLayersPanelVisible;
-		if (propertiesMenuItem != null) propertiesMenuItem.IsChecked = mainView.IsPropertiesPanelVisible;
-		if (colorMenuItem != null) colorMenuItem.IsChecked = mainView.IsColorPanelVisible;
-		if (brushesMenuItem != null) brushesMenuItem.IsChecked = mainView.IsBrushesPanelVisible;
-		if (historyMenuItem != null) historyMenuItem.IsChecked = mainView.IsHistoryPanelVisible;
-		if (timelineMenuItem != null) timelineMenuItem.IsChecked = mainView.IsTimelinePanelVisible;
+		if (layersMenuItem != null)
+		{
+			var isChecked = mainView.IsLayersPanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "Layers" });
+			layersMenuItem.Header = panel;
+		}
+		if (propertiesMenuItem != null)
+		{
+			var isChecked = mainView.IsPropertiesPanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "Properties" });
+			propertiesMenuItem.Header = panel;
+		}
+		if (colorMenuItem != null)
+		{
+			var isChecked = mainView.IsColorPanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "Color" });
+			colorMenuItem.Header = panel;
+		}
+		if (brushesMenuItem != null)
+		{
+			var isChecked = mainView.IsBrushesPanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "Brushes" });
+			brushesMenuItem.Header = panel;
+		}
+		if (historyMenuItem != null)
+		{
+			var isChecked = mainView.IsHistoryPanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "History" });
+			historyMenuItem.Header = panel;
+		}
+		if (timelineMenuItem != null)
+		{
+			var isChecked = mainView.IsTimelinePanelVisible;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = "Timeline" });
+			timelineMenuItem.Header = panel;
+		}
+		if (lockWorkspaceMenuItem != null)
+		{
+			var isChecked = mainView.IsWorkspaceLocked;
+			var panel = new StackPanel { Orientation = Orientation.Horizontal };
+			panel.Children.Add(new TextBlock { Text = isChecked ? "✓" : "", Width = 25, VerticalAlignment = VerticalAlignment.Center });
+			panel.Children.Add(new TextBlock { Text = isChecked ? "Unlock Workspace" : "Lock Workspace" });
+			lockWorkspaceMenuItem.Header = panel;
+		}
 	}
 
 	public void OnToggleLayers(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.ToggleLayersPanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.ToggleLayersPanel();
+		UpdateMenuChecks();
 	}
 
 	public void OnToggleProperties(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.TogglePropertiesPanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.TogglePropertiesPanel();
+		UpdateMenuChecks();
 	}
 
 	public void OnToggleColor(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.ToggleColorPanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.ToggleColorPanel();
+		UpdateMenuChecks();
 	}
 
 	public void OnToggleBrushes(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.ToggleBrushesPanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.ToggleBrushesPanel();
+		UpdateMenuChecks();
 	}
 
 	public void OnToggleHistory(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.ToggleHistoryPanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.ToggleHistoryPanel();
+		UpdateMenuChecks();
 	}
 
 	public void OnToggleTimeline(object? sender, RoutedEventArgs e)
 	{
 		if (mainView == null) return;
-		var isVisible = mainView.ToggleTimelinePanel();
-		if (sender is MenuItem menuItem) menuItem.IsChecked = isVisible;
+		mainView.ToggleTimelinePanel();
+		UpdateMenuChecks();
+	}
+
+	public void OnToggleLockWorkspace(object? sender, RoutedEventArgs e)
+	{
+		if (mainView == null) return;
+		mainView.ToggleWorkspaceLock();
+		UpdateMenuChecks();
 	}
 
 }

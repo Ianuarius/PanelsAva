@@ -19,6 +19,7 @@ public partial class DockablePanel : UserControl
 	public static readonly StyledProperty<DockHost?> DockHostProperty = AvaloniaProperty.Register<DockablePanel, DockHost?>(nameof(DockHost));
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
 	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(IsFloating));
+	public static readonly StyledProperty<bool> CanFloatProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(CanFloat), true);
 
 	public TabGroup? TabGroup { get; set; }
 
@@ -96,6 +97,12 @@ public partial class DockablePanel : UserControl
 	{
 		get => GetValue(IsFloatingProperty);
 		set => SetValue(IsFloatingProperty, value);
+	}
+
+	public bool CanFloat
+	{
+		get => GetValue(CanFloatProperty);
+		set => SetValue(CanFloatProperty, value);
 	}
 
 	public void SetFloating(bool floating)
@@ -213,6 +220,7 @@ public partial class DockablePanel : UserControl
 		{
 			if (delta.X * delta.X + delta.Y * delta.Y >= threshold * threshold)
 			{
+				if (!CanFloat) return;
 				BeginFloating(posRoot, visualRoot);
 				MoveFloating(posRoot);
 			}
