@@ -247,6 +247,9 @@ public partial class MainView : UserControl
 		{
 			currentViewModel.CurrentDocumentIndex = GetFirstDockedDocumentIndex();
 		}
+
+		if (currentViewModel != null)
+			currentViewModel.SelectedDocument = tab.Document;
 	}
 
 	public void MoveFloatingTab(FileTabItem tab, Point posRoot, double dragOffsetX, double dragOffsetY)
