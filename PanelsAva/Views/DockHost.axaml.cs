@@ -135,7 +135,9 @@ public partial class DockHost : UserControl
 				}
 				if (panels.Count == 1)
 				{
-					dockedItems.Add(panels[0]);
+					var panel = panels[0];
+					panel.TabGroup = null;
+					dockedItems.Add(panel);
 				}
 				else if (panels.Count > 1)
 				{

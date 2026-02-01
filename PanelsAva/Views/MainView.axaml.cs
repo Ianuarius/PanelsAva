@@ -1483,13 +1483,11 @@ public partial class MainView : UserControl
 		var layout = host.GetLayout();
 		NormalizeItemSizes(layout);
 		int dockIndex = Math.Clamp(state.DockIndex, 0, layout.Items.Count);
-		if (state.IsTabbed && dockIndex < layout.Items.Count)
+		if (dockIndex < layout.Items.Count && layout.Items[dockIndex].Panels.Count == 1 && state.IsTabbed)
 		{
 			var item = layout.Items[dockIndex];
-			int tabIndex = Math.Clamp(state.TabIndex, 0, item.Panels.Count);
-			item.Panels.Insert(tabIndex, panel.Title);
-			if (state.WasActive)
-				item.ActiveIndex = tabIndex;
+			item.Panels.Add(panel.Title);
+			item.ActiveIndex = item.Panels.Count - 1;
 		}
 		else
 		{
@@ -1505,12 +1503,13 @@ public partial class MainView : UserControl
 
 	bool IsPanelVisible(DockablePanel? panel)
 	{
-		return panel != null && panel.Parent != null;
+		return panel != null && (panel.Parent != null || panel.TabGroup != null);
 	}
 
 	void HidePanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
+		panel.TabGroup = null;
 
 		// Capture current docked proportion for this panel so we can restore it later
 		var prevConfig = BuildLayoutConfig();
@@ -1522,7 +1521,7 @@ public partial class MainView : UserControl
 			layoutConfig = prevConfig;
 		}
 
-		if (panel.DockHost != null && panel.Parent is Grid)
+		if (panel.DockHost != null)
 		{
 			var host = panel.DockHost;
 			var layout = host.GetLayout();
