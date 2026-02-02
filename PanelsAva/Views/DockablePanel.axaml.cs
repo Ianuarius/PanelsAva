@@ -654,6 +654,15 @@ public partial class DockablePanel : UserControl
 				Tag = panel
 			};
 
+			var tabContextMenu = new ContextMenu();
+			var tabCloseMenuItem = new MenuItem { Header = "Close" };
+			tabCloseMenuItem.Click += (s, e) =>
+			{
+				panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
+			};
+			tabContextMenu.Items.Add(tabCloseMenuItem);
+			tabBorder.ContextMenu = tabContextMenu;
+
 			var tabText = new TextBlock
 			{
 				Text = panel.Title,

@@ -939,8 +939,6 @@ public partial class MainView
 			preserveLayoutOnSave = true;
 		}
 
-		panel.TabGroup = null;
-
 		if (panel.IsFloating)
 		{
 			if (panel.Parent is Canvas canvas)
@@ -948,6 +946,7 @@ public partial class MainView
 				canvas.Children.Remove(panel);
 			}
 			ScheduleLayoutSave();
+			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 			return;
 		}
 
@@ -978,6 +977,7 @@ public partial class MainView
 		}
 
 		ScheduleLayoutSave();
+		PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void OnPanelCloseRequested(object? sender, EventArgs e)
@@ -1001,6 +1001,7 @@ public partial class MainView
 		{
 			panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
 			ScheduleLayoutSave();
+			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 			return;
 		}
 
@@ -1009,11 +1010,13 @@ public partial class MainView
 		{
 			ApplyPanelStateToDockHost(panel, state, host);
 			ScheduleLayoutSave();
+			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 			return;
 		}
 
 		if (leftDockHost != null)
 			leftDockHost.AddPanel(panel);
 		ScheduleLayoutSave();
+		PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 	}
 }

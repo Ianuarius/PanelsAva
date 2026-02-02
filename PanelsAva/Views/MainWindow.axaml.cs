@@ -2,6 +2,8 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PanelsAva.Views;
@@ -29,7 +31,11 @@ public partial class MainWindow : Window
 	void OnLoaded(object? sender, RoutedEventArgs e)
 	{
 		mainView = this.FindControl<MainView>("MainView");
-		if (mainView != null) mainView.Loaded += OnMainViewLoaded;
+		if (mainView != null)
+		{
+			mainView.Loaded += OnMainViewLoaded;
+			mainView.PanelVisibilityChanged += OnMainViewPanelVisibilityChanged;
+		}
 		layersMenuItem = this.FindControl<MenuItem>("LayersMenuItem");
 		propertiesMenuItem = this.FindControl<MenuItem>("PropertiesMenuItem");
 		colorMenuItem = this.FindControl<MenuItem>("ColorMenuItem");
@@ -48,6 +54,11 @@ public partial class MainWindow : Window
 	{
 		UpdateMenuChecks();
 		RefreshWorkspaceMenu();
+	}
+
+	void OnMainViewPanelVisibilityChanged(object? sender, EventArgs e)
+	{
+		UpdateMenuChecks();
 	}
 
 	void RefreshWorkspaceMenu()

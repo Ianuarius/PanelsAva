@@ -64,6 +64,8 @@ public partial class MainView : UserControl
 	bool isWorkspaceLocked;
 	bool preserveLayoutOnSave;
 
+	public event EventHandler? PanelVisibilityChanged;
+
 	public MainView()
 	{
 		InitializeComponent();
