@@ -38,41 +38,37 @@ public partial class MainView
 
 	void HookLayoutEvents()
 	{
-		HookDockHostLayoutEvents(leftDockHost);
-		HookDockHostLayoutEvents(rightDockHost);
-		HookDockHostLayoutEvents(bottomDockHost);
-		HookPanelLayoutEvents(layersPanel);
-		HookPanelLayoutEvents(propertiesPanel);
-		HookPanelLayoutEvents(colorPanel);
-		HookPanelLayoutEvents(brushesPanel);
-		HookPanelLayoutEvents(historyPanel);
-		HookPanelLayoutEvents(timelinePanel);
-		HookSplitterEvents(leftDockSplitter);
-		HookSplitterEvents(rightDockSplitter);
-		HookSplitterEvents(bottomDockSplitter);
-	}
+		var hosts = new[] { leftDockHost, rightDockHost, bottomDockHost };
+		for (int i = 0; i < hosts.Length; i++)
+		{
+			if (hosts[i] != null)
+			{
+				hosts[i]!.LayoutChanged -= OnLayoutChanged;
+				hosts[i]!.LayoutChanged += OnLayoutChanged;
+			}
+		}
 
-	void HookDockHostLayoutEvents(DockHost? host)
-	{
-		if (host == null) return;
-		host.LayoutChanged -= OnLayoutChanged;
-		host.LayoutChanged += OnLayoutChanged;
-	}
+		var panels = new[] { layersPanel, propertiesPanel, colorPanel, brushesPanel, historyPanel, timelinePanel };
+		for (int i = 0; i < panels.Length; i++)
+		{
+			if (panels[i] != null)
+			{
+				panels[i]!.LayoutChanged -= OnLayoutChanged;
+				panels[i]!.LayoutChanged += OnLayoutChanged;
+			}
+		}
 
-	void HookPanelLayoutEvents(DockablePanel? panel)
-	{
-		if (panel == null) return;
-		panel.LayoutChanged -= OnLayoutChanged;
-		panel.LayoutChanged += OnLayoutChanged;
-	}
-
-	void HookSplitterEvents(GridSplitter? splitter)
-	{
-		if (splitter == null) return;
-		splitter.PointerReleased -= OnSplitterPointerReleased;
-		splitter.PointerReleased += OnSplitterPointerReleased;
-		splitter.PointerCaptureLost -= OnSplitterPointerCaptureLost;
-		splitter.PointerCaptureLost += OnSplitterPointerCaptureLost;
+		var splitters = new[] { leftDockSplitter, rightDockSplitter, bottomDockSplitter };
+		for (int i = 0; i < splitters.Length; i++)
+		{
+			if (splitters[i] != null)
+			{
+				splitters[i]!.PointerReleased -= OnSplitterPointerReleased;
+				splitters[i]!.PointerReleased += OnSplitterPointerReleased;
+				splitters[i]!.PointerCaptureLost -= OnSplitterPointerCaptureLost;
+				splitters[i]!.PointerCaptureLost += OnSplitterPointerCaptureLost;
+			}
+		}
 	}
 
 	void OnSplitterPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -297,6 +293,7 @@ public partial class MainView
 		}
 
 		config.Panels = new List<PanelState>(states.Values);
+		RebuildPanelStateCache();
 		return config;
 	}
 
@@ -329,22 +326,8 @@ public partial class MainView
 			return state;
 		if (existingStates.TryGetValue(title, out var existing))
 		{
-			state = new PanelState
-			{
-				Title = existing.Title,
-				IsHidden = existing.IsHidden,
-				IsFloating = existing.IsFloating,
-				IsTabbed = existing.IsTabbed,
-				DockEdge = existing.DockEdge,
-				DockIndex = existing.DockIndex,
-				TabIndex = existing.TabIndex,
-				WasActive = existing.WasActive,
-				FloatingLeft = existing.FloatingLeft,
-				FloatingTop = existing.FloatingTop,
-				FloatingWidth = existing.FloatingWidth,
-				FloatingHeight = existing.FloatingHeight,
-				DockedProportion = existing.DockedProportion
-			};
+			state = new PanelState();
+			state.CopyFrom(existing);
 			states[title] = state;
 			return state;
 		}
@@ -386,6 +369,7 @@ public partial class MainView
 		try
 		{
 			layoutConfig = config;
+			RebuildPanelStateCache();
 			if (mainGrid.ColumnDefinitions.Count >= 6)
 			{
 				if (config.LeftDockWidth > 0)
@@ -458,6 +442,19 @@ public partial class MainView
 				return config.Panels[i];
 		}
 		return null;
+	}
+
+	void RebuildPanelStateCache()
+	{
+		panelStateCache.Clear();
+		if (layoutConfig != null)
+		{
+			for (int i = 0; i < layoutConfig.Panels.Count; i++)
+			{
+				var panel = layoutConfig.Panels[i];
+				panelStateCache[panel.Title] = panel;
+			}
+		}
 	}
 
 	void RemovePanelFromDockHostLayout(DockHostLayout? layout, string title)
@@ -799,12 +796,8 @@ public partial class MainView
 
 	PanelState? GetPanelState(string title)
 	{
-		if (layoutConfig == null) return null;
-		for (int i = 0; i < layoutConfig.Panels.Count; i++)
-		{
-			if (layoutConfig.Panels[i].Title == title)
-				return layoutConfig.Panels[i];
-		}
+		if (panelStateCache.TryGetValue(title, out var state))
+			return state;
 		return null;
 	}
 

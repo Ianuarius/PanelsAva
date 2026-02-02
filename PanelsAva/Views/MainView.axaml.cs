@@ -63,6 +63,7 @@ public partial class MainView : UserControl
 	bool isApplyingLayout;
 	bool isWorkspaceLocked;
 	bool preserveLayoutOnSave;
+	Dictionary<string, PanelState> panelStateCache = new();
 
 	public event EventHandler? PanelVisibilityChanged;
 

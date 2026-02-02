@@ -66,6 +66,10 @@ Where to look in this repo
 - Dockable panel example: [PanelsAva/Views/DockablePanel.axaml](PanelsAva/Views/DockablePanel.axaml)
 - Example ViewModels: [PanelsAva/ViewModels](PanelsAva/ViewModels)
 
+TODO
+----
+- Reorganize panels in tabstrip by dragging them to a specific location.
+
 License
 -------
 CC BY 4.0

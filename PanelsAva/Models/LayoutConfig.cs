@@ -48,4 +48,21 @@ public class PanelState
 	public double FloatingWidth { get; set; }
 	public double FloatingHeight { get; set; }
 	public double DockedProportion { get; set; }
+
+	public void CopyFrom(PanelState other)
+	{
+		Title = other.Title;
+		IsHidden = other.IsHidden;
+		IsFloating = other.IsFloating;
+		IsTabbed = other.IsTabbed;
+		DockEdge = other.DockEdge;
+		DockIndex = other.DockIndex;
+		TabIndex = other.TabIndex;
+		WasActive = other.WasActive;
+		FloatingLeft = other.FloatingLeft;
+		FloatingTop = other.FloatingTop;
+		FloatingWidth = other.FloatingWidth;
+		FloatingHeight = other.FloatingHeight;
+		DockedProportion = other.DockedProportion;
+	}
 }
