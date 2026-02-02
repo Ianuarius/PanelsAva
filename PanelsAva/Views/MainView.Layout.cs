@@ -73,17 +73,28 @@ public partial class MainView
 
 	void OnSplitterPointerReleased(object? sender, PointerReleasedEventArgs e)
 	{
-		ScheduleLayoutSave();
+		SyncLayoutConfig(true, true);
 	}
 
 	void OnSplitterPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
 	{
-		ScheduleLayoutSave();
+		SyncLayoutConfig(true, true);
 	}
 
 	void OnLayoutChanged(object? sender, EventArgs e)
 	{
-		ScheduleLayoutSave();
+		SyncLayoutConfig(true, true);
+	}
+
+	void SyncLayoutConfig(bool notify, bool scheduleSave)
+	{
+		if (isApplyingLayout) return;
+		var config = BuildLayoutConfig();
+		layoutConfig = config;
+		if (scheduleSave)
+			ScheduleLayoutSave();
+		if (notify)
+			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	void LoadAndApplyLayout()
@@ -876,24 +887,17 @@ public partial class MainView
 	void HidePanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
-
-		var prevConfig = layoutConfig ?? BuildLayoutConfig();
-		var prevState = GetPanelStateFromConfig(prevConfig, panel.Title);
-		if (prevState != null)
-		{
-			prevState.IsHidden = true;
-			layoutConfig = prevConfig;
-			preserveLayoutOnSave = true;
-		}
+		SyncLayoutConfig(false, false);
+		var currentState = GetPanelState(panel.Title);
+		if (currentState != null)
+			currentState.IsHidden = true;
+		preserveLayoutOnSave = true;
 
 		if (panel.IsFloating)
 		{
 			if (panel.Parent is Canvas canvas)
-			{
 				canvas.Children.Remove(panel);
-			}
-			ScheduleLayoutSave();
-			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+			SyncLayoutConfig(true, true);
 			return;
 		}
 
@@ -923,8 +927,7 @@ public partial class MainView
 			}
 		}
 
-		ScheduleLayoutSave();
-		PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+		SyncLayoutConfig(true, true);
 	}
 
 	void OnPanelCloseRequested(object? sender, EventArgs e)
@@ -938,17 +941,16 @@ public partial class MainView
 	void ShowPanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
+		SyncLayoutConfig(false, false);
 		var state = GetPanelState(panel.Title);
 		if (state == null) return;
-
 		state.IsHidden = false;
 		preserveLayoutOnSave = true;
 
 		if (state.IsFloating && floatingLayer != null)
 		{
 			panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
-			ScheduleLayoutSave();
-			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+			SyncLayoutConfig(true, true);
 			return;
 		}
 
@@ -956,15 +958,13 @@ public partial class MainView
 		if (host != null)
 		{
 			ApplyPanelStateToDockHost(panel, state, host);
-			ScheduleLayoutSave();
-			PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+			SyncLayoutConfig(true, true);
 			return;
 		}
 
 		if (leftDockHost != null)
 			leftDockHost.AddPanel(panel);
-		ScheduleLayoutSave();
-		PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+		SyncLayoutConfig(true, true);
 	}
 
 	public static void RemoveFromParent(Control control)

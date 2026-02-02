@@ -69,6 +69,7 @@ Where to look in this repo
 TODO
 ----
 - Reorganize panels in tabstrip by dragging them to a specific location.
+- Closing and reopening panels in TabStrips seems a bit fragile and might sometimes break the panel open state. Need to investigate properly at some point.
 
 License
 -------

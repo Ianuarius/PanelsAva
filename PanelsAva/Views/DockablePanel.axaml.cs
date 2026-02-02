@@ -28,7 +28,6 @@ public partial class DockablePanel : UserControl
 	Border? titleBar;
 	StackPanel? tabStrip;
 	bool isDragging;
-	bool isFloating;
 	bool isTransitioningToFloat;
 	Point pressPointRoot;
 	double dragOffsetRatioX;
@@ -105,7 +104,6 @@ public partial class DockablePanel : UserControl
 
 	public void SetFloating(bool floating)
 	{
-		isFloating = floating;
 		IsFloating = floating;
 		
 		if (floating)
@@ -192,10 +190,7 @@ public partial class DockablePanel : UserControl
 			dragOffsetAbsoluteY = dragOffset.Y;
 		}
 
-		isDragging = true;
-		currentPointer = (Pointer)e.Pointer;
-		dragHandle = handle;
-		e.Pointer.Capture(handle);
+		SetupDragState(handle, e.Pointer);
 		e.Handled = true;
 	}
 
@@ -212,7 +207,7 @@ public partial class DockablePanel : UserControl
 		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
 		
 		var threshold = 10 * scale;
-		if (!isFloating)
+		if (!IsFloating)
 		{
 			if (delta.X * delta.X + delta.Y * delta.Y >= threshold * threshold)
 			{
@@ -244,7 +239,7 @@ public partial class DockablePanel : UserControl
 		if (visualRoot == null) return;
 
 		var posRoot = e.GetPosition(visualRoot);
-		if (isFloating)
+		if (IsFloating)
 		{
 			if (tabDropTarget != null)
 			{
@@ -352,6 +347,11 @@ public partial class DockablePanel : UserControl
 			panelPosAtPressRoot = panelPosInRoot.Value;
 
 			Debug.WriteLine($"[BeginDragAfterActivate] {Title}: pressPointRoot={pressPointRoot} panelPosInRoot={panelPosInRoot.Value} titleBarPosInRoot={titleBarPosInRoot.Value} titleBarOffsetInPanelX={titleBarOffsetInPanelX:F1} clickXInsideTab={clickXInsideTab:F1} offsetX={offsetX:F1} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} handle={handle.GetType().Name}");
+		SetupDragState(handle, pointer);
+	}
+
+	void SetupDragState(Control handle, IPointer pointer)
+	{
 		isDragging = true;
 		currentPointer = (Pointer)pointer;
 		dragHandle = handle;
@@ -424,16 +424,8 @@ public partial class DockablePanel : UserControl
 			var targetPos = tabDropTarget.TranslatePoint(new Point(0, 0), FloatingLayer);
 			if (targetTopLeft.HasValue && targetPos.HasValue)
 			{
-				if (previewBorder == null)
-				{
-					previewBorder = new Border
-					{
-						Background = new SolidColorBrush(Colors.Blue),
-						Opacity = 0.5
-					};
-					previewBorder.SetValue(Panel.ZIndexProperty, 0);
-					FloatingLayer.Children.Add(previewBorder);
-				}
+				EnsurePreviewBorder();
+				if (previewBorder == null) return;
 
 				previewBorder.Width = tabDropTarget.Bounds.Width;
 				previewBorder.Height = tabDropTarget.Bounds.Height;
@@ -454,16 +446,8 @@ public partial class DockablePanel : UserControl
 				var previewRect = targetDockHost.GetDockPreviewRect(relativePos);
 				if (previewRect.Width > 0 && previewRect.Height > 0)
 				{
-					if (previewBorder == null)
-					{
-						previewBorder = new Border
-						{
-							Background = new SolidColorBrush(Colors.Blue),
-							Opacity = 0.5
-						};
-						previewBorder.SetValue(Panel.ZIndexProperty, 0);
-						FloatingLayer.Children.Add(previewBorder);
-					}
+					EnsurePreviewBorder();
+					if (previewBorder == null) return;
 
 					previewBorder.Width = previewRect.Width;
 					previewBorder.Height = previewRect.Height;
@@ -511,6 +495,19 @@ public partial class DockablePanel : UserControl
 		return null;
 	}
 
+	void EnsurePreviewBorder()
+	{
+		if (previewBorder != null || FloatingLayer == null) return;
+		
+		previewBorder = new Border
+		{
+			Background = new SolidColorBrush(Colors.Blue),
+			Opacity = 0.5
+		};
+		previewBorder.SetValue(Panel.ZIndexProperty, 0);
+		FloatingLayer.Children.Add(previewBorder);
+	}
+
 	Rect GetDockHotRect(DockHost dockHost, Point dockTopLeft, Visual visualRoot)
 	{
 		double scale = 1.0;
@@ -536,7 +533,7 @@ public partial class DockablePanel : UserControl
 		foreach (var p in panels)
 		{
 			if (p == this) continue;
-			if (p.isFloating) continue;
+			if (p.IsFloating) continue;
 
 			var tabStripRect = GetTabStripRect(p, visualRoot);
 			if (tabStripRect.HasValue && tabStripRect.Value.Contains(posRoot))
