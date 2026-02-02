@@ -54,7 +54,7 @@ public class TabGroup
 public partial class DockHost : UserControl
 {
 	Grid? panelsGrid;
-	List<object> dockedItems = new();
+	List<TabGroup> dockedItems = new();
 	int lastDockedItemsCount;
 
 	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockHost, bool>(nameof(IsHorizontal), false);
@@ -89,24 +89,14 @@ public partial class DockHost : UserControl
 
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			if (dockedItems[i] is DockablePanel panel)
+			var tg = dockedItems[i];
+			var item = new DockHostItemLayout
 			{
-				layout.Items.Add(new DockHostItemLayout
-				{
-					Panels = new List<string> { panel.Title },
-					ActiveIndex = 0
-				});
-			}
-			else if (dockedItems[i] is TabGroup tg)
-			{
-				var item = new DockHostItemLayout
-				{
-					ActiveIndex = tg.ActiveIndex
-				};
-				for (int j = 0; j < tg.Panels.Count; j++)
-					item.Panels.Add(tg.Panels[j].Title);
-				layout.Items.Add(item);
-			}
+				ActiveIndex = tg.ActiveIndex
+			};
+			for (int j = 0; j < tg.Panels.Count; j++)
+				item.Panels.Add(tg.Panels[j].Title);
+			layout.Items.Add(item);
 		}
 
 		layout.ItemSizes = GetItemSizes();
@@ -121,28 +111,19 @@ public partial class DockHost : UserControl
 			for (int i = 0; i < layout.Items.Count; i++)
 			{
 				var item = layout.Items[i];
-				var panels = new List<DockablePanel>();
+				var tg = new TabGroup();
 				for (int j = 0; j < item.Panels.Count; j++)
 				{
 					var panel = resolvePanel(item.Panels[j]);
 					if (panel != null)
 					{
 						panel.DockHost = this;
-						panels.Add(panel);
+						tg.AddPanel(panel);
 					}
 				}
-				if (panels.Count == 1)
+				if (tg.Panels.Count > 0)
 				{
-					var panel = panels[0];
-					panel.TabGroup = null;
-					dockedItems.Add(panel);
-				}
-				else if (panels.Count > 1)
-				{
-					var tg = new TabGroup();
-					for (int j = 0; j < panels.Count; j++)
-						tg.AddPanel(panels[j]);
-					tg.ActiveIndex = Math.Clamp(item.ActiveIndex, 0, Math.Max(0, panels.Count - 1));
+					tg.ActiveIndex = Math.Clamp(item.ActiveIndex, 0, Math.Max(0, tg.Panels.Count - 1));
 					dockedItems.Add(tg);
 				}
 			}
@@ -167,28 +148,13 @@ public partial class DockHost : UserControl
 	{
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			if (dockedItems[i] is DockablePanel p && p == panel)
+			var tg = dockedItems[i];
+			if (tg.Panels.Contains(panel))
 			{
-				dockedItems.RemoveAt(i);
+				tg.RemovePanel(panel);
+				if (tg.Panels.Count == 0)
+					dockedItems.RemoveAt(i);
 				break;
-			}
-			else if (dockedItems[i] is TabGroup tg)
-			{
-				if (tg.Panels.Contains(panel))
-				{
-					tg.RemovePanel(panel);
-					if (tg.Panels.Count == 1)
-					{
-						var remainingPanel = tg.Panels[0];
-						tg.RemovePanel(remainingPanel);
-						dockedItems[i] = remainingPanel;
-					}
-					else if (tg.Panels.Count == 0)
-					{
-						dockedItems.RemoveAt(i);
-					}
-					break;
-				}
 			}
 		}
 	}
@@ -197,9 +163,8 @@ public partial class DockHost : UserControl
 	{
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			if (dockedItems[i] is DockablePanel p && p == panel)
-				return true;
-			else if (dockedItems[i] is TabGroup tg && tg.Panels.Contains(panel))
+			var tg = dockedItems[i];
+			if (tg.Panels.Contains(panel))
 				return true;
 		}
 		return false;
@@ -208,7 +173,7 @@ public partial class DockHost : UserControl
 	public void AddPanel(DockablePanel panel)
 	{
 		if (!EnsurePanelNotDuplicated(panel))
-			dockedItems.Add(panel);
+			dockedItems.Add(CreateTabGroup(panel));
 		RebuildGrid();
 	}
 
@@ -220,7 +185,7 @@ public partial class DockHost : UserControl
 		RemovePanelFromDockedItems(panel);
 
 		var targetIndex = FindTargetIndex(positionInHost);
-		dockedItems.Insert(targetIndex, panel);
+		dockedItems.Insert(targetIndex, CreateTabGroup(panel));
 		RebuildGrid();
 	}
 
@@ -233,16 +198,8 @@ public partial class DockHost : UserControl
 
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			if (dockedItems[i] is DockablePanel p && p == targetPanel)
-			{
-				var newTabGroup = new TabGroup();
-				newTabGroup.AddPanel(targetPanel);
-				newTabGroup.AddPanel(panel);
-				newTabGroup.ActiveIndex = 0;
-				dockedItems[i] = newTabGroup;
-				break;
-			}
-			else if (dockedItems[i] is TabGroup tg && tg.Panels.Contains(targetPanel))
+			var tg = dockedItems[i];
+			if (tg.Panels.Contains(targetPanel))
 			{
 				tg.AddPanel(panel);
 				break;
@@ -313,11 +270,7 @@ public partial class DockHost : UserControl
 		var rects = new List<Rect>();
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			DockablePanel? panel = null;
-			if (dockedItems[i] is DockablePanel p)
-				panel = p;
-			else if (dockedItems[i] is TabGroup tg)
-				panel = tg.ActivePanel;
+			var panel = dockedItems[i].ActivePanel;
 
 			if (panel == null) continue;
 			var topLeft = panel.TranslatePoint(new Point(0, 0), this);
@@ -350,27 +303,19 @@ public partial class DockHost : UserControl
 			if (i > 0)
 				AddSplitter();
 
-			if (dockedItems[i] is DockablePanel panel)
-			{
-				AddPanelRowOrColumn(panel);
-				ClearFloatingProperties(panel);
-				panel.RefreshTabStrip();
-			}
-			else if (dockedItems[i] is TabGroup tabGroup)
-			{
-				for (int j = 0; j < tabGroup.Panels.Count; j++)
-					tabGroup.Panels[j].SetFloating(false);
+			var tabGroup = dockedItems[i];
+			for (int j = 0; j < tabGroup.Panels.Count; j++)
+				tabGroup.Panels[j].SetFloating(false);
 
-				var activePanel = tabGroup.ActivePanel;
-				if (activePanel != null)
-				{
-					AddPanelRowOrColumn(activePanel);
-					ClearFloatingProperties(activePanel);
-				}
-				
-				for (int j = 0; j < tabGroup.Panels.Count; j++)
-					tabGroup.Panels[j].RefreshTabStrip();
+			var activePanel = tabGroup.ActivePanel;
+			if (activePanel != null)
+			{
+				AddPanelRowOrColumn(activePanel);
+				ClearFloatingProperties(activePanel);
 			}
+			
+			for (int j = 0; j < tabGroup.Panels.Count; j++)
+				tabGroup.Panels[j].RefreshTabStrip();
 		}
 		panelsGrid.InvalidateMeasure();
 		panelsGrid.InvalidateArrange();
@@ -440,11 +385,7 @@ public partial class DockHost : UserControl
 		var lengths = new List<double>();
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
-			DockablePanel? panel = null;
-			if (dockedItems[i] is DockablePanel p)
-				panel = p;
-			else if (dockedItems[i] is TabGroup tg)
-				panel = tg.ActivePanel;
+			var panel = dockedItems[i].ActivePanel;
 			
 			if (panel == null)
 			{
@@ -463,6 +404,14 @@ public partial class DockHost : UserControl
 			sizes.Add(total > 0 ? lengths[i] / total : 1.0 / lengths.Count);
 		}
 		return sizes;
+	}
+
+	TabGroup CreateTabGroup(DockablePanel panel)
+	{
+		var tg = new TabGroup();
+		tg.AddPanel(panel);
+		tg.ActiveIndex = 0;
+		return tg;
 	}
 
 	void ApplyItemSizes(DockHostLayout? layout)
