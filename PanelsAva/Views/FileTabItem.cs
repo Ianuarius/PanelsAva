@@ -1,11 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using System;
-using PanelsAva;
-using Avalonia;
 
 namespace PanelsAva.Views;
 

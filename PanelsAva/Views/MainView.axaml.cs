@@ -62,6 +62,7 @@ public partial class MainView : UserControl
 	DispatcherTimer? layoutSaveTimer;
 	bool isApplyingLayout;
 	bool isWorkspaceLocked;
+	bool preserveLayoutOnSave;
 
 	public MainView()
 	{

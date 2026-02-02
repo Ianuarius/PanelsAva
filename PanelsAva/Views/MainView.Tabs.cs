@@ -1,11 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using System;
-using PanelsAva.ViewModels;
-using Avalonia.Media;
 using System.Collections.Generic;
-using Avalonia;
-using Avalonia.Input;
 
 namespace PanelsAva.Views;
 

@@ -1,14 +1,8 @@
-﻿using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Linq;
-using System.Threading.Tasks;
-using PanelsAva.Views;
-using PanelsAva;
-using Avalonia.Media.Imaging;
-using System;
-using System.IO;
+﻿using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using System;
+using System.Collections.ObjectModel;
+using System.IO;
 
 namespace PanelsAva.ViewModels;
 

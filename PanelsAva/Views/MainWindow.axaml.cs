@@ -1,9 +1,8 @@
-﻿using Avalonia.Controls;
+﻿using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Avalonia;
 
 namespace PanelsAva.Views;
 

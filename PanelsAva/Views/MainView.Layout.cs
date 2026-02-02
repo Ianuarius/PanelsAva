@@ -1,13 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using System;
-using PanelsAva.ViewModels;
-using System.Collections.Generic;
-using PanelsAva.Models;
-using System.Text.Json;
-using System.IO;
 using Avalonia.Threading;
-using Avalonia;
+using PanelsAva.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 namespace PanelsAva.Views;
 
@@ -198,6 +196,24 @@ public partial class MainView
 
 	void SaveLayoutConfig()
 	{
+		if (preserveLayoutOnSave && layoutConfig != null)
+		{
+			preserveLayoutOnSave = false;
+			if (workspaceProfiles == null)
+				return;
+			if (string.IsNullOrWhiteSpace(activeProfileName))
+				activeProfileName = workspaceProfiles.ActiveProfile;
+			if (IsDefaultProfile(activeProfileName))
+			{
+				defaultLayoutConfig = layoutConfig;
+				workspaceProfiles.Profiles[defaultProfileName] = layoutConfig;
+				WriteWorkspaceProfiles(workspaceProfiles);
+				return;
+			}
+			workspaceProfiles.Profiles[activeProfileName] = layoutConfig;
+			WriteWorkspaceProfiles(workspaceProfiles);
+			return;
+		}
 		if (workspaceProfiles == null)
 		{
 			var config = BuildLayoutConfig();
@@ -851,11 +867,32 @@ public partial class MainView
 		var layout = host.GetLayout();
 		NormalizeItemSizes(layout);
 		int dockIndex = Math.Clamp(state.DockIndex, 0, layout.Items.Count);
-		if (dockIndex < layout.Items.Count && layout.Items[dockIndex].Panels.Count == 1 && state.IsTabbed)
+		if (state.IsTabbed)
 		{
-			var item = layout.Items[dockIndex];
-			item.Panels.Add(panel.Title);
-			item.ActiveIndex = item.Panels.Count - 1;
+			DockHostItemLayout? targetItem = null;
+			if (dockIndex < layout.Items.Count)
+			{
+				var candidate = layout.Items[dockIndex];
+				if (DockItemMatchesState(candidate, state))
+					targetItem = candidate;
+			}
+			if (targetItem == null)
+			{
+				targetItem = new DockHostItemLayout
+				{
+					Panels = new List<string>(),
+					ActiveIndex = 0
+				};
+				layout.Items.Insert(dockIndex, targetItem);
+				layout.ItemSizes.Insert(dockIndex, state.DockedProportion > 0 ? state.DockedProportion : 1.0);
+			}
+			int tabIndex = Math.Clamp(state.TabIndex, 0, targetItem.Panels.Count);
+			if (!targetItem.Panels.Contains(panel.Title))
+				targetItem.Panels.Insert(tabIndex, panel.Title);
+			if (state.WasActive)
+				targetItem.ActiveIndex = Math.Clamp(tabIndex, 0, Math.Max(0, targetItem.Panels.Count - 1));
+			else if (targetItem.ActiveIndex >= targetItem.Panels.Count)
+				targetItem.ActiveIndex = Math.Max(0, targetItem.Panels.Count - 1);
 		}
 		else
 		{
@@ -869,22 +906,49 @@ public partial class MainView
 		host.ApplyLayout(layout, FindPanelByTitle);
 	}
 
+	bool DockItemMatchesState(DockHostItemLayout item, PanelState state)
+	{
+		for (int i = 0; i < item.Panels.Count; i++)
+		{
+			var panelState = GetPanelState(item.Panels[i]);
+			if (panelState == null) continue;
+			if (panelState.DockEdge == state.DockEdge && panelState.DockIndex == state.DockIndex)
+				return true;
+		}
+		return false;
+	}
+
 	bool IsPanelVisible(DockablePanel? panel)
 	{
-		return panel != null && (panel.Parent != null || panel.TabGroup != null);
+		if (panel == null) return false;
+		var state = GetPanelState(panel.Title);
+		if (state?.IsHidden ?? false) return false;
+		return panel.Parent != null || panel.TabGroup != null;
 	}
 
 	void HidePanel(DockablePanel? panel)
 	{
 		if (panel == null) return;
-		panel.TabGroup = null;
 
-		var prevConfig = BuildLayoutConfig();
+		var prevConfig = layoutConfig ?? BuildLayoutConfig();
 		var prevState = GetPanelStateFromConfig(prevConfig, panel.Title);
 		if (prevState != null)
 		{
 			prevState.IsHidden = true;
 			layoutConfig = prevConfig;
+			preserveLayoutOnSave = true;
+		}
+
+		panel.TabGroup = null;
+
+		if (panel.IsFloating)
+		{
+			if (panel.Parent is Canvas canvas)
+			{
+				canvas.Children.Remove(panel);
+			}
+			ScheduleLayoutSave();
+			return;
 		}
 
 		if (panel.DockHost != null)
@@ -893,34 +957,27 @@ public partial class MainView
 			var layout = host.GetLayout();
 			RemovePanelFromDockHostLayout(layout, panel.Title);
 			host.ApplyLayout(layout, FindPanelByTitle);
-			ScheduleLayoutSave();
-			return;
 		}
-		if (panel.Parent is DockHost parentHost)
+		else if (panel.Parent is DockHost parentHost)
 		{
 			var layout = parentHost.GetLayout();
 			RemovePanelFromDockHostLayout(layout, panel.Title);
 			parentHost.ApplyLayout(layout, FindPanelByTitle);
-			ScheduleLayoutSave();
-			return;
 		}
-		if (panel.Parent is Canvas canvas)
+		else
 		{
-			canvas.Children.Remove(panel);
-			ScheduleLayoutSave();
-			return;
+			var parent = panel.Parent;
+			if (parent is Panel panelParent)
+			{
+				panelParent.Children.Remove(panel);
+			}
+			else if (parent is ContentControl contentControl)
+			{
+				contentControl.Content = null;
+			}
 		}
-		if (panel.Parent is Panel parentPanel)
-		{
-			parentPanel.Children.Remove(panel);
-			ScheduleLayoutSave();
-			return;
-		}
-		if (panel.Parent is ContentControl contentControl)
-		{
-			contentControl.Content = null;
-			ScheduleLayoutSave();
-		}
+
+		ScheduleLayoutSave();
 	}
 
 	void OnPanelCloseRequested(object? sender, EventArgs e)
@@ -935,26 +992,27 @@ public partial class MainView
 	{
 		if (panel == null) return;
 		var state = GetPanelState(panel.Title);
-		if (state != null)
+		if (state == null) return;
+
+		state.IsHidden = false;
+		preserveLayoutOnSave = true;
+
+		if (state.IsFloating && floatingLayer != null)
 		{
-			state.IsHidden = false;
-			if (state.IsFloating && floatingLayer != null)
-			{
-				panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
-				ScheduleLayoutSave();
-				return;
-			}
-			var host = GetDockHostByEdge(state.DockEdge);
-			if (host != null)
-			{
-				ApplyPanelStateToDockHost(panel, state, host);
-				ScheduleLayoutSave();
-				return;
-			}
+			panel.SetFloatingBounds(floatingLayer, state.FloatingLeft, state.FloatingTop, state.FloatingWidth, state.FloatingHeight);
+			ScheduleLayoutSave();
+			return;
 		}
-		if (panel.DockHost != null)
-			panel.DockHost.AddPanel(panel);
-		else if (leftDockHost != null)
+
+		var host = GetDockHostByEdge(state.DockEdge);
+		if (host != null)
+		{
+			ApplyPanelStateToDockHost(panel, state, host);
+			ScheduleLayoutSave();
+			return;
+		}
+
+		if (leftDockHost != null)
 			leftDockHost.AddPanel(panel);
 		ScheduleLayoutSave();
 	}

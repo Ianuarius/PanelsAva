@@ -1,12 +1,10 @@
-using Avalonia.Controls;
 using Avalonia;
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using Avalonia.VisualTree;
-using System.Diagnostics;
+using Avalonia.Controls;
 using Avalonia.Input;
 using PanelsAva.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace PanelsAva.Views;
 
