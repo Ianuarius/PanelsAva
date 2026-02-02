@@ -18,11 +18,11 @@ public enum DockEdge
 
 public class TabGroup
 {
-	public List<DockablePanel> Panels { get; } = new();
+	public List<PanelTabGroup> Panels { get; } = new();
 	public int ActiveIndex { get; set; }
-	public DockablePanel ActivePanel => ActiveIndex >= 0 && ActiveIndex < Panels.Count ? Panels[ActiveIndex] : null!;
+	public PanelTabGroup ActivePanel => ActiveIndex >= 0 && ActiveIndex < Panels.Count ? Panels[ActiveIndex] : null!;
 
-	public void AddPanel(DockablePanel panel)
+	public void AddPanel(PanelTabGroup panel)
 	{
 		if (!Panels.Contains(panel))
 		{
@@ -31,7 +31,7 @@ public class TabGroup
 		}
 	}
 
-	public void RemovePanel(DockablePanel panel)
+	public void RemovePanel(PanelTabGroup panel)
 	{
 		var index = Panels.IndexOf(panel);
 		if (index >= 0)
@@ -43,7 +43,7 @@ public class TabGroup
 		}
 	}
 
-	public void SetActive(DockablePanel panel)
+	public void SetActive(PanelTabGroup panel)
 	{
 		var index = Panels.IndexOf(panel);
 		if (index >= 0)
@@ -103,7 +103,7 @@ public partial class DockGrid : UserControl
 		return layout;
 	}
 
-	public void ApplyLayout(DockGridLayout? layout, Func<string, DockablePanel?> resolvePanel)
+	public void ApplyLayout(DockGridLayout? layout, Func<string, PanelTabGroup?> resolvePanel)
 	{
 		dockedItems.Clear();
 		if (layout != null)
@@ -138,13 +138,13 @@ public partial class DockGrid : UserControl
 		RebuildGrid();
 	}
 
-	public void RemovePanel(DockablePanel panel)
+	public void RemovePanel(PanelTabGroup panel)
 	{
 		RemovePanelFromDockedItems(panel);
 		RebuildGrid();
 	}
 
-	void RemovePanelFromDockedItems(DockablePanel panel)
+	void RemovePanelFromDockedItems(PanelTabGroup panel)
 	{
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
@@ -159,7 +159,7 @@ public partial class DockGrid : UserControl
 		}
 	}
 
-	bool EnsurePanelNotDuplicated(DockablePanel panel)
+	bool EnsurePanelNotDuplicated(PanelTabGroup panel)
 	{
 		for (int i = 0; i < dockedItems.Count; i++)
 		{
@@ -170,14 +170,14 @@ public partial class DockGrid : UserControl
 		return false;
 	}
 
-	public void AddPanel(DockablePanel panel)
+	public void AddPanel(PanelTabGroup panel)
 	{
 		if (!EnsurePanelNotDuplicated(panel))
 			dockedItems.Add(CreateTabGroup(panel));
 		RebuildGrid();
 	}
 
-	public void Dock(DockablePanel panel, Point positionInHost)
+	public void Dock(PanelTabGroup panel, Point positionInHost)
 	{
 		if (panelsGrid == null) return;
 
@@ -189,7 +189,7 @@ public partial class DockGrid : UserControl
 		RebuildGrid();
 	}
 
-	public void DockAsTab(DockablePanel panel, DockablePanel targetPanel)
+	public void DockAsTab(PanelTabGroup panel, PanelTabGroup targetPanel)
 	{
 		if (panelsGrid == null) return;
 
@@ -358,7 +358,7 @@ public partial class DockGrid : UserControl
 		panelsGrid.Children.Add(splitter);
 	}
 
-	void AddPanelRowOrColumn(DockablePanel panel)
+	void AddPanelRowOrColumn(PanelTabGroup panel)
 	{
 		if (panelsGrid == null) return;
 
@@ -406,7 +406,7 @@ public partial class DockGrid : UserControl
 		return sizes;
 	}
 
-	TabGroup CreateTabGroup(DockablePanel panel)
+	TabGroup CreateTabGroup(PanelTabGroup panel)
 	{
 		var tg = new TabGroup();
 		tg.AddPanel(panel);
@@ -454,7 +454,7 @@ public partial class DockGrid : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	void ClearFloatingProperties(DockablePanel panel)
+	void ClearFloatingProperties(PanelTabGroup panel)
 	{
 		Canvas.SetLeft(panel, double.NaN);
 		Canvas.SetTop(panel, double.NaN);

@@ -40,12 +40,12 @@ public partial class MainView : UserControl
 	double bottomDockMinHeight = 100;
 	double bottomDockMaxHeight = double.MaxValue;
 	Canvas? floatingLayer;
-	DockablePanel? layersPanel;
-	DockablePanel? propertiesPanel;
-	DockablePanel? colorPanel;
-	DockablePanel? brushesPanel;
-	DockablePanel? historyPanel;
-	DockablePanel? timelinePanel;
+	PanelTabGroup? layersPanel;
+	PanelTabGroup? propertiesPanel;
+	PanelTabGroup? colorPanel;
+	PanelTabGroup? brushesPanel;
+	PanelTabGroup? historyPanel;
+	PanelTabGroup? timelinePanel;
 	StackPanel? fileTabStrip;
 	Image? canvasImage;
 	MainViewModel? currentViewModel;
@@ -267,7 +267,7 @@ public partial class MainView : UserControl
 		
 		if (leftDockGrid != null && floatingLayer != null)
 		{
-			layersPanel = new DockablePanel
+			layersPanel = new PanelTabGroup
 			{
 				Title = "Layers",
 				Content = new LayersPanel(),
@@ -277,7 +277,7 @@ public partial class MainView : UserControl
 			layersPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(layersPanel);
 
-			propertiesPanel = new DockablePanel
+			propertiesPanel = new PanelTabGroup
 			{
 				Title = "Properties",
 				Content = new PropertiesPanel(),
@@ -287,7 +287,7 @@ public partial class MainView : UserControl
 			propertiesPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(propertiesPanel);
 
-			colorPanel = new DockablePanel
+			colorPanel = new PanelTabGroup
 			{
 				Title = "Color",
 				Content = new ColorPanel(),
@@ -297,7 +297,7 @@ public partial class MainView : UserControl
 			colorPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(colorPanel);
 
-			brushesPanel = new DockablePanel
+			brushesPanel = new PanelTabGroup
 			{
 				Title = "Brushes",
 				Content = new BrushesPanel(),
@@ -310,7 +310,7 @@ public partial class MainView : UserControl
 
 		if (rightDockGrid != null && floatingLayer != null)
 		{
-			historyPanel = new DockablePanel
+			historyPanel = new PanelTabGroup
 			{
 				Title = "History",
 				Content = new HistoryPanel(),
@@ -323,7 +323,7 @@ public partial class MainView : UserControl
 
 		if (bottomDockGrid != null && floatingLayer != null)
 		{
-			timelinePanel = new DockablePanel
+			timelinePanel = new PanelTabGroup
 			{
 				Title = "Timeline",
 				Content = new TimelinePanel(),
@@ -339,9 +339,9 @@ public partial class MainView : UserControl
 		UpdatePanelFloatability();
 	}
 
-	DockablePanel CreatePanel(string title, Control content, DockGrid host, Canvas floatingLayer)
+	PanelTabGroup CreatePanel(string title, Control content, DockGrid host, Canvas floatingLayer)
 	{
-		var panel = new DockablePanel
+		var panel = new PanelTabGroup
 		{
 			Title = title,
 			Content = content,

@@ -1,14 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:views="clr-namespace:PanelsAva.Views"
-			 x:Class="PanelsAva.Views.DockablePanel"
+			 x:Class="PanelsAva.Views.PanelTabGroup"
 			 MinHeight="50" Design.Width="200" Design.Height="150">
 	<Border Background="#2A2A2A" BorderBrush="#3A3A3A" BorderThickness="1">
 		<Grid RowDefinitions="18,*">
 			<StackPanel x:Name="TabStrip" Orientation="Horizontal" Grid.Row="0" Background="#2A2A2A" />
 			<Border x:Name="TitleBar" Background="#3A3A3A" Grid.Row="0" HorizontalAlignment="Left" Padding="6,0,6,0">
 				<Grid ColumnDefinitions="*,Auto">
-					<TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}"
+					<TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=views:PanelTabGroup}}"
 							FontSize="12"
 							VerticalAlignment="Center"
 							HorizontalAlignment="Left"
@@ -26,7 +26,7 @@
 				</Grid>
 			</Border>
 			<Border Grid.Row="1" Background="#222222">
-				<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:DockablePanel}}" />
+				<ContentPresenter Content="{Binding Content, RelativeSource={RelativeSource AncestorType=views:PanelTabGroup}}" />
 			</Border>
 		</Grid>
 	</Border>

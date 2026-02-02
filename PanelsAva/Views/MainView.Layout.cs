@@ -331,7 +331,7 @@ public partial class MainView
 		}
 	}
 
-	PanelState GetOrCreateState(string title, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates, DockablePanel? panel)
+	PanelState GetOrCreateState(string title, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates, PanelTabGroup? panel)
 	{
 		if (states.TryGetValue(title, out var state))
 			return state;
@@ -525,7 +525,7 @@ public partial class MainView
 		}
 	}
 
-	DockablePanel? FindPanelByTitle(string title)
+	PanelTabGroup? FindPanelByTitle(string title)
 	{
 		var panels = GetAllPanels();
 		for (int i = 0; i < panels.Count; i++)
@@ -536,9 +536,9 @@ public partial class MainView
 		return null;
 	}
 
-	List<DockablePanel> GetAllPanels()
+	List<PanelTabGroup> GetAllPanels()
 	{
-		var list = new List<DockablePanel>();
+		var list = new List<PanelTabGroup>();
 		if (layersPanel != null) list.Add(layersPanel);
 		if (propertiesPanel != null) list.Add(propertiesPanel);
 		if (colorPanel != null) list.Add(colorPanel);
@@ -793,7 +793,7 @@ public partial class MainView
 
 	public bool IsWorkspaceLocked => isWorkspaceLocked;
 
-	bool TogglePanel(DockablePanel? panel)
+	bool TogglePanel(PanelTabGroup? panel)
 	{
 		if (panel == null) return false;
 		if (IsPanelVisible(panel))
@@ -820,7 +820,7 @@ public partial class MainView
 		return null;
 	}
 
-	void ApplyPanelStateToDockHost(DockablePanel panel, PanelState state, DockGrid host)
+	void ApplyPanelStateToDockHost(PanelTabGroup panel, PanelState state, DockGrid host)
 	{
 		var layout = host.GetLayout();
 		NormalizeItemSizes(layout);
@@ -876,7 +876,7 @@ public partial class MainView
 		return false;
 	}
 
-	bool IsPanelVisible(DockablePanel? panel)
+	bool IsPanelVisible(PanelTabGroup? panel)
 	{
 		if (panel == null) return false;
 		var state = GetPanelState(panel.Title);
@@ -884,7 +884,7 @@ public partial class MainView
 		return panel.Parent != null || panel.TabGroup != null;
 	}
 
-	void HidePanel(DockablePanel? panel)
+	void HidePanel(PanelTabGroup? panel)
 	{
 		if (panel == null) return;
 		SyncLayoutConfig(false, false);
@@ -932,13 +932,13 @@ public partial class MainView
 
 	void OnPanelCloseRequested(object? sender, EventArgs e)
 	{
-		if (sender is DockablePanel panel)
+		if (sender is PanelTabGroup panel)
 		{
 			HidePanel(panel);
 		}
 	}
 
-	void ShowPanel(DockablePanel? panel)
+	void ShowPanel(PanelTabGroup? panel)
 	{
 		if (panel == null) return;
 		SyncLayoutConfig(false, false);

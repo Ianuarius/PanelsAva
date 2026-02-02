@@ -37,33 +37,33 @@ dotnet run --project PanelsAva.Desktop
 
 What’s in this repository
 -------------------------
-- `PanelsAva/Views` — XAML views for each panel and host components (e.g. DockHost.axaml, DockablePanel.axaml, MainWindow.axaml).
+- `PanelsAva/Views` — XAML views for each panel and host components (e.g. DockGrid.axaml, PanelTabGroup.axaml, MainWindow.axaml).
 - `PanelsAva/ViewModels` — ViewModel implementations used by the sample panels.
 - `PanelsAva.Desktop` — Desktop entry project that launches the example app.
 
 How to use these panels in your project
 ---------------------------------------
-1. Copy the visual components you want from `PanelsAva/Views` into your project (for example, `DockHost.axaml` and `DockablePanel.axaml`).
+1. Copy the visual components you want from `PanelsAva/Views` into your project (for example, `DockGrid.axaml` and `PanelTabGroup.axaml`).
 2. Copy the corresponding ViewModels (or adapt them) from `PanelsAva/ViewModels` to your app. Ensure any base classes like `ViewModelBase.cs` are included or mapped to your MVVM framework.
 3. Add DataTemplates or a ViewLocator so your ViewModels are associated with the Views in XAML.
-4. Place the `DockHost` control in your main window where you want the dockable area to appear. Create instances of `DockablePanel` (or your derived panel types) and set their DataContext to the appropriate ViewModel instances.
+4. Place the `DockGrid` control in your main window where you want the dockable area to appear. Create instances of `PanelTabGroup` (or your derived panel types) and set their DataContext to the appropriate ViewModel instances.
 
 Example (conceptual)
 --------------------
-- Add `DockHost` to your `MainWindow.axaml`.
-- Create a `LayersPanelViewModel` instance and add a `DockablePanel` containing the `LayersPanel` view, binding its DataContext to the ViewModel.
+- Add `DockGrid` to your `MainWindow.axaml`.
+- Create a `LayersPanelViewModel` instance and add a `PanelTabGroup` containing the `LayersPanel` view, binding its DataContext to the ViewModel.
 
 Extending and creating new panels
 ---------------------------------
-- To create a new panel, add an AXAML view (copy `DockablePanel.axaml` or one of the sample panels) and a matching ViewModel in the `ViewModels` folder.
+- To create a new panel, add an AXAML view (copy `PanelTabGroup.axaml` or one of the sample panels) and a matching ViewModel in the `ViewModels` folder.
 - Implement the panel logic in the ViewModel and expose commands/properties for the UI.
 - Use the existing panels as templates — most panels follow a simple pattern: a View + a ViewModel registered or created by the shell.
 
 Where to look in this repo
 --------------------------
 - Main window and host implementation: [PanelsAva/Views/MainWindow.axaml](PanelsAva/Views/MainWindow.axaml)
-- Dock host control: [PanelsAva/Views/DockHost.axaml](PanelsAva/Views/DockHost.axaml)
-- Dockable panel example: [PanelsAva/Views/DockablePanel.axaml](PanelsAva/Views/DockablePanel.axaml)
+- Dock host control: [PanelsAva/Views/DockGrid.axaml](PanelsAva/Views/DockGrid.axaml)
+- Dockable panel example: [PanelsAva/Views/PanelTabGroup.axaml](PanelsAva/Views/PanelTabGroup.axaml)
 - Example ViewModels: [PanelsAva/ViewModels](PanelsAva/ViewModels)
 
 TODO

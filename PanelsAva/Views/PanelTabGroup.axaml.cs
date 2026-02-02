@@ -11,14 +11,14 @@ using System.Linq;
 
 namespace PanelsAva.Views;
 
-public partial class DockablePanel : UserControl
+public partial class PanelTabGroup : UserControl
 {
-	public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<DockablePanel, string>(nameof(Title), "Panel");
-	public static readonly new StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
-	public static readonly StyledProperty<DockGrid?> DockGridProperty = AvaloniaProperty.Register<DockablePanel, DockGrid?>(nameof(DockGrid));
-	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
-	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(IsFloating));
-	public static readonly StyledProperty<bool> CanFloatProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(CanFloat), true);
+	public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<PanelTabGroup, string>(nameof(Title), "Panel");
+	public static readonly new StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<PanelTabGroup, object?>(nameof(Content));
+	public static readonly StyledProperty<DockGrid?> DockGridProperty = AvaloniaProperty.Register<PanelTabGroup, DockGrid?>(nameof(DockGrid));
+	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<PanelTabGroup, Canvas?>(nameof(FloatingLayer));
+	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<PanelTabGroup, bool>(nameof(IsFloating));
+	public static readonly StyledProperty<bool> CanFloatProperty = AvaloniaProperty.Register<PanelTabGroup, bool>(nameof(CanFloat), true);
 
 	public TabGroup? TabGroup { get; set; }
 
@@ -36,11 +36,11 @@ public partial class DockablePanel : UserControl
 	Pointer? currentPointer;
 	Control? dragHandle;
 	Control? previewBorder;
-	DockablePanel? tabDropTarget;
+	PanelTabGroup? tabDropTarget;
 	Button? closeButton;
 	MenuItem? closeMenuItem;
 
-	public DockablePanel()
+	public PanelTabGroup()
 	{
 		InitializeComponent();
 		DataContext = this;
@@ -527,9 +527,9 @@ public partial class DockablePanel : UserControl
 		return new Rect(dockTopLeft, dockHost.Bounds.Size);
 	}
 
-	DockablePanel? FindPanelAt(Point posRoot, Visual visualRoot)
+	PanelTabGroup? FindPanelAt(Point posRoot, Visual visualRoot)
 	{
-		var panels = visualRoot.GetVisualDescendants().OfType<DockablePanel>();
+		var panels = visualRoot.GetVisualDescendants().OfType<PanelTabGroup>();
 		foreach (var p in panels)
 		{
 			if (p == this) continue;
@@ -544,7 +544,7 @@ public partial class DockablePanel : UserControl
 		return null;
 	}
 
-	Rect? GetTabStripRect(DockablePanel panel, Visual visualRoot)
+	Rect? GetTabStripRect(PanelTabGroup panel, Visual visualRoot)
 	{
 		var panelTopLeft = panel.TranslatePoint(new Point(0, 0), visualRoot);
 		if (!panelTopLeft.HasValue) return null;
@@ -651,7 +651,7 @@ public partial class DockablePanel : UserControl
 
 	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
-		if (sender is Border border && border.Tag is DockablePanel panel && TabGroup != null)
+		if (sender is Border border && border.Tag is PanelTabGroup panel && TabGroup != null)
 		{
 			var e2 = e.GetCurrentPoint(border);
 			if (e2.Properties.IsLeftButtonPressed)
