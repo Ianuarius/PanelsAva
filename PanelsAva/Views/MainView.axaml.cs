@@ -338,6 +338,20 @@ public partial class MainView : UserControl
 		UpdatePanelFloatability();
 	}
 
+	DockablePanel CreatePanel(string title, Control content, DockHost host, Canvas floatingLayer)
+	{
+		var panel = new DockablePanel
+		{
+			Title = title,
+			Content = content,
+			DockHost = host,
+			FloatingLayer = floatingLayer
+		};
+		panel.CloseRequested += OnPanelCloseRequested;
+		host.AddPanel(panel);
+		return panel;
+	}
+
 	Canvas? FindFloatingLayer()
 	{
 		var grid = this.Parent as Grid;

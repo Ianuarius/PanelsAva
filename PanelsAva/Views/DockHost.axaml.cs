@@ -213,7 +213,7 @@ public partial class DockHost : UserControl
 	{
 		if (panelsGrid == null) return;
 
-		RemoveFromParent(panel);
+		MainView.RemoveFromParent(panel);
 		RemovePanel(panel);
 
 		var targetIndex = FindTargetIndex(positionInHost);
@@ -225,7 +225,7 @@ public partial class DockHost : UserControl
 	{
 		if (panelsGrid == null) return;
 
-		RemoveFromParent(panel);
+		MainView.RemoveFromParent(panel);
 		RemovePanel(panel);
 
 		for (int i = 0; i < dockedItems.Count; i++)
@@ -528,20 +528,5 @@ public partial class DockHost : UserControl
 		panel.SetFloating(false);
 		panel.ClearValue(Control.WidthProperty);
 		panel.ClearValue(Control.HeightProperty);
-	}
-
-	static void RemoveFromParent(Control control)
-	{
-		if (control.Parent is Panel panel)
-		{
-			panel.Children.Remove(control);
-			return;
-		}
-
-		if (control.Parent is ContentControl parentControl)
-		{
-			parentControl.Content = null;
-			return;
-		}
 	}
 }

@@ -40,7 +40,6 @@ public partial class DockablePanel : UserControl
 	DockablePanel? tabDropTarget;
 	Button? closeButton;
 	MenuItem? closeMenuItem;
-	bool loggedMoveOnce = false;
 
 	public DockablePanel()
 	{
@@ -192,8 +191,6 @@ public partial class DockablePanel : UserControl
 			dragOffsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
 			dragOffsetAbsoluteY = dragOffset.Y;
 		}
-
-		Debug.WriteLine($"[BeginDrag] {Title}: pressPointRoot={pressPointRoot} panelPosAtPressRoot={panelPosAtPressRoot} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} handle={handle.GetType().Name}");
 
 		isDragging = true;
 		currentPointer = (Pointer)e.Pointer;
@@ -366,7 +363,6 @@ public partial class DockablePanel : UserControl
 		if (FloatingLayer == null) return;
 
 		isTransitioningToFloat = true;
-		loggedMoveOnce = false;
 		
 		if (DockHost != null)
 		{
@@ -409,13 +405,6 @@ public partial class DockablePanel : UserControl
 		);
 
 		var posInFloatingLayer = posRoot - floatingLayerPos.Value;
-
-		if (!loggedMoveOnce)
-		{
-			loggedMoveOnce = true;
-			Debug.WriteLine($"[MoveFloating] {Title}: posRoot={posRoot} floatingLayerPos={floatingLayerPos.Value} posInFloatingLayer={posInFloatingLayer} panel.Bounds.Width={this.Bounds.Width} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} currentDragOffset={currentDragOffset}");
-		}
-		
 
 		var panelPos = posInFloatingLayer - currentDragOffset;
 		
@@ -577,28 +566,9 @@ public partial class DockablePanel : UserControl
 		return new Rect(panelTopLeft.Value.X, panelTopLeft.Value.Y, width, height);
 	}
 
-	static void RemoveFromParent(Control control)
-	{
-		if (control.Parent is Panel panel)
-		{
-			panel.Children.Remove(control);
-			return;
-		}
-
-		if (control.Parent is Control parentControl)
-		{
-			var contentProp = parentControl.GetType().GetProperty("Content");
-			if (contentProp != null && contentProp.CanWrite)
-			{
-				contentProp.SetValue(parentControl, null);
-				return;
-			}
-		}
-	}
-
 	void MoveToFloatingLayer(Canvas layer, double left, double top)
 	{
-		RemoveFromParent(this);
+		MainView.RemoveFromParent(this);
 		layer.Children.Add(this);
 		this.SetValue(Panel.ZIndexProperty, 1);
 		Canvas.SetLeft(this, left);

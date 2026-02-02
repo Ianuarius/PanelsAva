@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.Collections;
 using PanelsAva.Models;
 using System;
 using System.Collections.Generic;
@@ -14,18 +15,25 @@ public partial class MainView
 	void UpdatePanelFileNames()
 	{
 		var name = currentViewModel?.SelectedDocument?.Name ?? string.Empty;
-		if (layersPanel?.Content is LayersPanel layersPanelView && layersPanelView.DataContext is ViewModels.LayersViewModel layersVm)
-			layersVm.CurrentFileName = name;
-		if (propertiesPanel?.Content is PropertiesPanel propertiesPanelView && propertiesPanelView.DataContext is ViewModels.PropertiesViewModel propertiesVm)
-			propertiesVm.CurrentFileName = name;
-		if (colorPanel?.Content is ColorPanel colorPanelView && colorPanelView.DataContext is ViewModels.ColorViewModel colorVm)
-			colorVm.CurrentFileName = name;
-		if (brushesPanel?.Content is BrushesPanel brushesPanelView && brushesPanelView.DataContext is ViewModels.BrushesViewModel brushesVm)
-			brushesVm.CurrentFileName = name;
-		if (historyPanel?.Content is HistoryPanel historyPanelView && historyPanelView.DataContext is ViewModels.HistoryViewModel historyVm)
-			historyVm.CurrentFileName = name;
-		if (timelinePanel?.Content is TimelinePanel timelinePanelView && timelinePanelView.DataContext is ViewModels.TimelineViewModel timelineVm)
-			timelineVm.CurrentFileName = name;
+		var panelUpdates = new[]
+		{
+			(panel: layersPanel, viewType: typeof(LayersPanel), vmType: typeof(ViewModels.LayersViewModel)),
+			(panel: propertiesPanel, viewType: typeof(PropertiesPanel), vmType: typeof(ViewModels.PropertiesViewModel)),
+			(panel: colorPanel, viewType: typeof(ColorPanel), vmType: typeof(ViewModels.ColorViewModel)),
+			(panel: brushesPanel, viewType: typeof(BrushesPanel), vmType: typeof(ViewModels.BrushesViewModel)),
+			(panel: historyPanel, viewType: typeof(HistoryPanel), vmType: typeof(ViewModels.HistoryViewModel)),
+			(panel: timelinePanel, viewType: typeof(TimelinePanel), vmType: typeof(ViewModels.TimelineViewModel))
+		};
+
+		for (int i = 0; i < panelUpdates.Length; i++)
+		{
+			var update = panelUpdates[i];
+			if (update.panel?.Content?.GetType() == update.viewType && update.panel.Content is Control view && view.DataContext?.GetType() == update.vmType)
+			{
+				var prop = update.vmType.GetProperty("CurrentFileName");
+				prop?.SetValue(view.DataContext, name);
+			}
+		}
 	}
 
 	void HookLayoutEvents()
@@ -426,20 +434,6 @@ public partial class MainView
 		bottomDockHost?.ClearPanels();
 	}
 
-	void RemoveFromParent(Control control)
-	{
-		if (control.Parent is Panel panel)
-		{
-			panel.Children.Remove(control);
-			return;
-		}
-		if (control.Parent is ContentControl contentControl)
-		{
-			contentControl.Content = null;
-			return;
-		}
-	}
-
 	void ApplyDockHostLayout(DockHost? host, DockHostLayout? layout)
 	{
 		if (host == null) return;
@@ -596,133 +590,93 @@ public partial class MainView
 	void UpdateDockHostSizes()
 	{
 		if (mainGrid == null) return;
-		UpdateLeftDockSize();
-		UpdateRightDockSize();
-		UpdateBottomDockSize();
+		UpdateDockSize(leftDockHost, mainGrid.ColumnDefinitions, 1, 2, leftDockSplitter, leftDockMinWidth, leftDockMaxWidth, ref leftDockWidth, leftSplitterWidth, true);
+		UpdateDockSize(rightDockHost, mainGrid.ColumnDefinitions, 5, 4, rightDockSplitter, rightDockMinWidth, rightDockMaxWidth, ref rightDockWidth, rightSplitterWidth, true);
+		UpdateDockSize(bottomDockHost, mainGrid.RowDefinitions, 3, 2, bottomDockSplitter, bottomDockMinHeight, bottomDockMaxHeight, ref bottomDockHeight, bottomSplitterHeight, false);
 	}
 
-	void UpdateLeftDockSize()
+	void UpdateDockSize<T>(DockHost? host, AvaloniaList<T> definitions, int dockIndex, int splitterIndex, GridSplitter? splitter, double minSize, double maxSize, ref GridLength cachedSize, GridLength splitterSize, bool isColumn) where T : DefinitionBase
 	{
-		if (leftDockHost == null || mainGrid == null) return;
-		if (mainGrid.ColumnDefinitions.Count < 3) return;
-		var leftCol = mainGrid.ColumnDefinitions[1];
-		var splitCol = mainGrid.ColumnDefinitions[2];
-		var hasPanels = leftDockHost.HasPanels;
-		if (hasPanels)
+		if (host == null || definitions.Count <= Math.Max(dockIndex, splitterIndex)) return;
+
+		var dockDef = definitions[dockIndex];
+		var splitDef = definitions[splitterIndex];
+		var hasPanels = host.HasPanels;
+
+		if (isColumn)
 		{
-			if (leftCol.Width.Value > 0)
-				leftDockWidth = leftCol.Width;
-			leftCol.MinWidth = leftDockMinWidth;
-			leftCol.MaxWidth = leftDockMaxWidth;
-			if (leftCol.Width.Value == 0)
-				leftCol.Width = leftDockWidth;
-			splitCol.Width = leftSplitterWidth;
-			leftDockHost.PreviewDockWidth = leftDockWidth.Value;
-			leftDockHost.PreviewDockHeight = leftDockHost.Bounds.Height;
-			if (leftDockSplitter != null)
+			var col = (ColumnDefinition)(object)dockDef;
+			var splitCol = (ColumnDefinition)(object)splitDef;
+			if (hasPanels)
 			{
-				leftDockSplitter.IsVisible = true;
-				leftDockSplitter.IsEnabled = true;
+				if (col.Width.Value > 0)
+					cachedSize = col.Width;
+				col.MinWidth = minSize;
+				col.MaxWidth = maxSize;
+				if (col.Width.Value == 0)
+					col.Width = cachedSize;
+				splitCol.Width = splitterSize;
+				host.PreviewDockWidth = cachedSize.Value;
+				host.PreviewDockHeight = host.Bounds.Height;
+				if (splitter != null)
+				{
+					splitter.IsVisible = true;
+					splitter.IsEnabled = true;
+				}
+			}
+			else
+			{
+				if (col.Width.Value > 0)
+					cachedSize = col.Width;
+				col.MinWidth = 0;
+				col.MaxWidth = double.MaxValue;
+				col.Width = new GridLength(0);
+				splitCol.Width = new GridLength(0);
+				host.PreviewDockWidth = cachedSize.Value;
+				host.PreviewDockHeight = host.Bounds.Height;
+				if (splitter != null)
+				{
+					splitter.IsVisible = false;
+					splitter.IsEnabled = false;
+				}
 			}
 		}
 		else
 		{
-			if (leftCol.Width.Value > 0)
-				leftDockWidth = leftCol.Width;
-			leftCol.MinWidth = 0;
-			leftCol.MaxWidth = double.MaxValue;
-			leftCol.Width = new GridLength(0);
-			splitCol.Width = new GridLength(0);
-			leftDockHost.PreviewDockWidth = leftDockWidth.Value;
-			leftDockHost.PreviewDockHeight = leftDockHost.Bounds.Height;
-			if (leftDockSplitter != null)
+			var row = (RowDefinition)(object)dockDef;
+			var splitRow = (RowDefinition)(object)splitDef;
+			if (hasPanels)
 			{
-				leftDockSplitter.IsVisible = false;
-				leftDockSplitter.IsEnabled = false;
+				if (row.Height.Value > 0)
+					cachedSize = row.Height;
+				row.MinHeight = minSize;
+				row.MaxHeight = maxSize;
+				if (row.Height.Value == 0)
+					row.Height = cachedSize;
+				splitRow.Height = splitterSize;
+				host.PreviewDockWidth = host.Bounds.Width;
+				host.PreviewDockHeight = cachedSize.Value;
+				if (splitter != null)
+				{
+					splitter.IsVisible = true;
+					splitter.IsEnabled = true;
+				}
 			}
-		}
-	}
-
-	void UpdateRightDockSize()
-	{
-		if (rightDockHost == null || mainGrid == null) return;
-		if (mainGrid.ColumnDefinitions.Count < 6) return;
-		var rightCol = mainGrid.ColumnDefinitions[5];
-		var splitCol = mainGrid.ColumnDefinitions[4];
-		var hasPanels = rightDockHost.HasPanels;
-		if (hasPanels)
-		{
-			if (rightCol.Width.Value > 0)
-				rightDockWidth = rightCol.Width;
-			rightCol.MinWidth = rightDockMinWidth;
-			rightCol.MaxWidth = rightDockMaxWidth;
-			if (rightCol.Width.Value == 0)
-				rightCol.Width = rightDockWidth;
-			splitCol.Width = rightSplitterWidth;
-			rightDockHost.PreviewDockWidth = rightDockWidth.Value;
-			rightDockHost.PreviewDockHeight = rightDockHost.Bounds.Height;
-			if (rightDockSplitter != null)
+			else
 			{
-				rightDockSplitter.IsVisible = true;
-				rightDockSplitter.IsEnabled = true;
-			}
-		}
-		else
-		{
-			if (rightCol.Width.Value > 0)
-				rightDockWidth = rightCol.Width;
-			rightCol.MinWidth = 0;
-			rightCol.MaxWidth = double.MaxValue;
-			rightCol.Width = new GridLength(0);
-			splitCol.Width = new GridLength(0);
-			rightDockHost.PreviewDockWidth = rightDockWidth.Value;
-			rightDockHost.PreviewDockHeight = rightDockHost.Bounds.Height;
-			if (rightDockSplitter != null)
-			{
-				rightDockSplitter.IsVisible = false;
-				rightDockSplitter.IsEnabled = false;
-			}
-		}
-	}
-
-	void UpdateBottomDockSize()
-	{
-		if (bottomDockHost == null || mainGrid == null) return;
-		if (mainGrid.RowDefinitions.Count < 4) return;
-		var splitRow = mainGrid.RowDefinitions[2];
-		var bottomRow = mainGrid.RowDefinitions[3];
-		var hasPanels = bottomDockHost.HasPanels;
-		if (hasPanels)
-		{
-			if (bottomRow.Height.Value > 0)
-				bottomDockHeight = bottomRow.Height;
-			bottomRow.MinHeight = bottomDockMinHeight;
-			bottomRow.MaxHeight = bottomDockMaxHeight;
-			if (bottomRow.Height.Value == 0)
-				bottomRow.Height = bottomDockHeight;
-			splitRow.Height = bottomSplitterHeight;
-			bottomDockHost.PreviewDockWidth = bottomDockHost.Bounds.Width;
-			bottomDockHost.PreviewDockHeight = bottomDockHeight.Value;
-			if (bottomDockSplitter != null)
-			{
-				bottomDockSplitter.IsVisible = true;
-				bottomDockSplitter.IsEnabled = true;
-			}
-		}
-		else
-		{
-			if (bottomRow.Height.Value > 0)
-				bottomDockHeight = bottomRow.Height;
-			bottomRow.MinHeight = 0;
-			bottomRow.MaxHeight = double.MaxValue;
-			bottomRow.Height = new GridLength(0);
-			splitRow.Height = new GridLength(0);
-			bottomDockHost.PreviewDockWidth = bottomDockHost.Bounds.Width;
-			bottomDockHost.PreviewDockHeight = bottomDockHeight.Value;
-			if (bottomDockSplitter != null)
-			{
-				bottomDockSplitter.IsVisible = false;
-				bottomDockSplitter.IsEnabled = false;
+				if (row.Height.Value > 0)
+					cachedSize = row.Height;
+				row.MinHeight = 0;
+				row.MaxHeight = double.MaxValue;
+				row.Height = new GridLength(0);
+				splitRow.Height = new GridLength(0);
+				host.PreviewDockWidth = host.Bounds.Width;
+				host.PreviewDockHeight = cachedSize.Value;
+				if (splitter != null)
+				{
+					splitter.IsVisible = false;
+					splitter.IsEnabled = false;
+				}
 			}
 		}
 	}
@@ -1018,5 +972,19 @@ public partial class MainView
 			leftDockHost.AddPanel(panel);
 		ScheduleLayoutSave();
 		PanelVisibilityChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	public static void RemoveFromParent(Control control)
+	{
+		if (control.Parent is Panel panel)
+		{
+			panel.Children.Remove(control);
+			return;
+		}
+		if (control.Parent is ContentControl contentControl)
+		{
+			contentControl.Content = null;
+			return;
+		}
 	}
 }
