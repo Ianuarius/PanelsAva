@@ -38,7 +38,7 @@ public partial class MainView
 
 	void HookLayoutEvents()
 	{
-		var hosts = new[] { leftDockHost, rightDockHost, bottomDockHost };
+		var hosts = new[] { leftDockGrid, rightDockGrid, bottomDockGrid };
 		for (int i = 0; i < hosts.Length; i++)
 		{
 			if (hosts[i] != null)
@@ -253,9 +253,9 @@ public partial class MainView
 	LayoutConfig BuildLayoutConfig()
 	{
 		var config = new LayoutConfig();
-		config.LeftDockHost = leftDockHost?.GetLayout();
-		config.RightDockHost = rightDockHost?.GetLayout();
-		config.BottomDockHost = bottomDockHost?.GetLayout();
+		config.LeftDockGrid = leftDockGrid?.GetLayout();
+		config.RightDockGrid = rightDockGrid?.GetLayout();
+		config.BottomDockGrid = bottomDockGrid?.GetLayout();
 		config.LeftDockWidth = GetLeftDockWidth();
 		config.RightDockWidth = GetRightDockWidth();
 		config.BottomDockHeight = GetBottomDockHeight();
@@ -270,9 +270,9 @@ public partial class MainView
 		}
 
 		var states = new Dictionary<string, PanelState>();
-		ApplyDockHostStates(config.LeftDockHost, states, existingStates);
-		ApplyDockHostStates(config.RightDockHost, states, existingStates);
-		ApplyDockHostStates(config.BottomDockHost, states, existingStates);
+		ApplyDockGridStates(config.LeftDockGrid, states, existingStates);
+		ApplyDockGridStates(config.RightDockGrid, states, existingStates);
+		ApplyDockGridStates(config.BottomDockGrid, states, existingStates);
 
 		var panels = GetAllPanels();
 		for (int i = 0; i < panels.Count; i++)
@@ -308,7 +308,7 @@ public partial class MainView
 		return config;
 	}
 
-	void ApplyDockHostStates(DockHostLayout? layout, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates)
+	void ApplyDockGridStates(DockGridLayout? layout, Dictionary<string, PanelState> states, Dictionary<string, PanelState> existingStates)
 	{
 		if (layout == null) return;
 		for (int i = 0; i < layout.Items.Count; i++)
@@ -346,8 +346,8 @@ public partial class MainView
 		{
 			Title = title
 		};
-		if (panel != null && panel.DockHost != null)
-			state.DockEdge = panel.DockHost.DockEdge.ToString();
+		if (panel != null && panel.DockGrid != null)
+			state.DockEdge = panel.DockGrid.DockEdge.ToString();
 		states[title] = state;
 		return state;
 	}
@@ -406,9 +406,9 @@ public partial class MainView
 			}
 
 			ClearAllPanels();
-			ApplyDockHostLayout(leftDockHost, config.LeftDockHost);
-			ApplyDockHostLayout(rightDockHost, config.RightDockHost);
-			ApplyDockHostLayout(bottomDockHost, config.BottomDockHost);
+			ApplyDockGridLayout(leftDockGrid, config.LeftDockGrid);
+			ApplyDockGridLayout(rightDockGrid, config.RightDockGrid);
+			ApplyDockGridLayout(bottomDockGrid, config.BottomDockGrid);
 			ApplyFloatingPanels(config);
 			UpdateDockHostSizes();
 		}
@@ -424,19 +424,19 @@ public partial class MainView
 		for (int i = 0; i < panels.Count; i++)
 			RemoveFromParent(panels[i]);
 			
-		leftDockHost?.ClearPanels();
-		rightDockHost?.ClearPanels();
-		bottomDockHost?.ClearPanels();
+		leftDockGrid?.ClearPanels();
+		rightDockGrid?.ClearPanels();
+		bottomDockGrid?.ClearPanels();
 	}
 
-	void ApplyDockHostLayout(DockHost? host, DockHostLayout? layout)
+	void ApplyDockGridLayout(DockGrid? host, DockGridLayout? layout)
 	{
 		if (host == null) return;
 		NormalizeItemSizes(layout);
 		host.ApplyLayout(layout, FindPanelByTitle);
 	}
 
-	void NormalizeItemSizes(DockHostLayout? layout)
+	void NormalizeItemSizes(DockGridLayout? layout)
 	{
 		if (layout == null) return;
 		while (layout.ItemSizes.Count < layout.Items.Count)
@@ -468,7 +468,7 @@ public partial class MainView
 		}
 	}
 
-	void RemovePanelFromDockHostLayout(DockHostLayout? layout, string title)
+	void RemovePanelFromDockGridLayout(DockGridLayout? layout, string title)
 	{
 		if (layout == null) return;
 		for (int i = layout.Items.Count - 1; i >= 0; i--)
@@ -548,22 +548,22 @@ public partial class MainView
 		return list;
 	}
 
-	void HookDockHostEvents()
+	void HookDockGridEvents()
 	{
-		if (leftDockHost != null)
+		if (leftDockGrid != null)
 		{
-			leftDockHost.DockedItemsChanged -= OnDockedItemsChanged;
-			leftDockHost.DockedItemsChanged += OnDockedItemsChanged;
+			leftDockGrid.DockedItemsChanged -= OnDockedItemsChanged;
+			leftDockGrid.DockedItemsChanged += OnDockedItemsChanged;
 		}
-		if (rightDockHost != null)
+		if (rightDockGrid != null)
 		{
-			rightDockHost.DockedItemsChanged -= OnDockedItemsChanged;
-			rightDockHost.DockedItemsChanged += OnDockedItemsChanged;
+			rightDockGrid.DockedItemsChanged -= OnDockedItemsChanged;
+			rightDockGrid.DockedItemsChanged += OnDockedItemsChanged;
 		}
-		if (bottomDockHost != null)
+		if (bottomDockGrid != null)
 		{
-			bottomDockHost.DockedItemsChanged -= OnDockedItemsChanged;
-			bottomDockHost.DockedItemsChanged += OnDockedItemsChanged;
+			bottomDockGrid.DockedItemsChanged -= OnDockedItemsChanged;
+			bottomDockGrid.DockedItemsChanged += OnDockedItemsChanged;
 		}
 	}
 
@@ -598,12 +598,12 @@ public partial class MainView
 	void UpdateDockHostSizes()
 	{
 		if (mainGrid == null) return;
-		UpdateDockSize(leftDockHost, mainGrid.ColumnDefinitions, 1, 2, leftDockSplitter, leftDockMinWidth, leftDockMaxWidth, ref leftDockWidth, leftSplitterWidth, true);
-		UpdateDockSize(rightDockHost, mainGrid.ColumnDefinitions, 5, 4, rightDockSplitter, rightDockMinWidth, rightDockMaxWidth, ref rightDockWidth, rightSplitterWidth, true);
-		UpdateDockSize(bottomDockHost, mainGrid.RowDefinitions, 3, 2, bottomDockSplitter, bottomDockMinHeight, bottomDockMaxHeight, ref bottomDockHeight, bottomSplitterHeight, false);
+		UpdateDockSize(leftDockGrid, mainGrid.ColumnDefinitions, 1, 2, leftDockSplitter, leftDockMinWidth, leftDockMaxWidth, ref leftDockWidth, leftSplitterWidth, true);
+		UpdateDockSize(rightDockGrid, mainGrid.ColumnDefinitions, 5, 4, rightDockSplitter, rightDockMinWidth, rightDockMaxWidth, ref rightDockWidth, rightSplitterWidth, true);
+		UpdateDockSize(bottomDockGrid, mainGrid.RowDefinitions, 3, 2, bottomDockSplitter, bottomDockMinHeight, bottomDockMaxHeight, ref bottomDockHeight, bottomSplitterHeight, false);
 	}
 
-	void UpdateDockSize<T>(DockHost? host, AvaloniaList<T> definitions, int dockIndex, int splitterIndex, GridSplitter? splitter, double minSize, double maxSize, ref GridLength cachedSize, GridLength splitterSize, bool isColumn) where T : DefinitionBase
+	void UpdateDockSize<T>(DockGrid? host, AvaloniaList<T> definitions, int dockIndex, int splitterIndex, GridSplitter? splitter, double minSize, double maxSize, ref GridLength cachedSize, GridLength splitterSize, bool isColumn) where T : DefinitionBase
 	{
 		if (host == null || definitions.Count <= Math.Max(dockIndex, splitterIndex)) return;
 
@@ -812,15 +812,15 @@ public partial class MainView
 		return null;
 	}
 
-	DockHost? GetDockHostByEdge(string edge)
+	DockGrid? GetDockHostByEdge(string edge)
 	{
-		if (edge == DockEdge.Left.ToString()) return leftDockHost;
-		if (edge == DockEdge.Right.ToString()) return rightDockHost;
-		if (edge == DockEdge.Bottom.ToString()) return bottomDockHost;
+		if (edge == DockEdge.Left.ToString()) return leftDockGrid;
+		if (edge == DockEdge.Right.ToString()) return rightDockGrid;
+		if (edge == DockEdge.Bottom.ToString()) return bottomDockGrid;
 		return null;
 	}
 
-	void ApplyPanelStateToDockHost(DockablePanel panel, PanelState state, DockHost host)
+	void ApplyPanelStateToDockHost(DockablePanel panel, PanelState state, DockGrid host)
 	{
 		var layout = host.GetLayout();
 		NormalizeItemSizes(layout);
@@ -901,17 +901,17 @@ public partial class MainView
 			return;
 		}
 
-		if (panel.DockHost != null)
+		if (panel.DockGrid != null)
 		{
-			var host = panel.DockHost;
+			var host = panel.DockGrid;
 			var layout = host.GetLayout();
-			RemovePanelFromDockHostLayout(layout, panel.Title);
+			RemovePanelFromDockGridLayout(layout, panel.Title);
 			host.ApplyLayout(layout, FindPanelByTitle);
 		}
-		else if (panel.Parent is DockHost parentHost)
+		else if (panel.Parent is DockGrid parentHost)
 		{
 			var layout = parentHost.GetLayout();
-			RemovePanelFromDockHostLayout(layout, panel.Title);
+			RemovePanelFromDockGridLayout(layout, panel.Title);
 			parentHost.ApplyLayout(layout, FindPanelByTitle);
 		}
 		else
@@ -962,8 +962,8 @@ public partial class MainView
 			return;
 		}
 
-		if (leftDockHost != null)
-			leftDockHost.AddPanel(panel);
+		if (leftDockGrid != null)
+			leftDockGrid.AddPanel(panel);
 		SyncLayoutConfig(true, true);
 	}
 

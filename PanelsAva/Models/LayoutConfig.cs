@@ -4,9 +4,9 @@ namespace PanelsAva.Models;
 
 public class LayoutConfig
 {
-	public DockHostLayout? LeftDockHost { get; set; }
-	public DockHostLayout? RightDockHost { get; set; }
-	public DockHostLayout? BottomDockHost { get; set; }
+	public DockGridLayout? LeftDockGrid { get; set; }
+	public DockGridLayout? RightDockGrid { get; set; }
+	public DockGridLayout? BottomDockGrid { get; set; }
 	public double LeftDockWidth { get; set; }
 	public double RightDockWidth { get; set; }
 	public double BottomDockHeight { get; set; }
@@ -20,7 +20,7 @@ public class WorkspaceProfiles
 	public Dictionary<string, LayoutConfig> Profiles { get; set; } = new();
 }
 
-public class DockHostLayout
+public class DockGridLayout
 {
 	public string DockEdge { get; set; } = string.Empty;
 	public List<DockHostItemLayout> Items { get; set; } = new();

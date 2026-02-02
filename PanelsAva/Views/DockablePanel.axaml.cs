@@ -15,7 +15,7 @@ public partial class DockablePanel : UserControl
 {
 	public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<DockablePanel, string>(nameof(Title), "Panel");
 	public static readonly new StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<DockablePanel, object?>(nameof(Content));
-	public static readonly StyledProperty<DockHost?> DockHostProperty = AvaloniaProperty.Register<DockablePanel, DockHost?>(nameof(DockHost));
+	public static readonly StyledProperty<DockGrid?> DockGridProperty = AvaloniaProperty.Register<DockablePanel, DockGrid?>(nameof(DockGrid));
 	public static readonly StyledProperty<Canvas?> FloatingLayerProperty = AvaloniaProperty.Register<DockablePanel, Canvas?>(nameof(FloatingLayer));
 	public static readonly StyledProperty<bool> IsFloatingProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(IsFloating));
 	public static readonly StyledProperty<bool> CanFloatProperty = AvaloniaProperty.Register<DockablePanel, bool>(nameof(CanFloat), true);
@@ -78,10 +78,10 @@ public partial class DockablePanel : UserControl
 		set => SetValue(ContentProperty, value);
 	}
 
-	public DockHost? DockHost
+	public DockGrid? DockGrid
 	{
-		get => GetValue(DockHostProperty);
-		set => SetValue(DockHostProperty, value);
+		get => GetValue(DockGridProperty);
+		set => SetValue(DockGridProperty, value);
 	}
 
 	public Canvas? FloatingLayer
@@ -243,26 +243,26 @@ public partial class DockablePanel : UserControl
 		{
 			if (tabDropTarget != null)
 			{
-				var targetDockHost = tabDropTarget.DockHost;
-				if (targetDockHost != null)
+				var targetDockGrid = tabDropTarget.DockGrid;
+				if (targetDockGrid != null)
 				{
 					SetFloating(false);
-					targetDockHost.DockAsTab(this, tabDropTarget);
-					DockHost = targetDockHost;
+					targetDockGrid.DockAsTab(this, tabDropTarget);
+					DockGrid = targetDockGrid;
 				}
 				tabDropTarget = null;
 			}
 			else
 			{
-				var targetDockHost = FindDockHostAt(posRoot, visualRoot);
-				if (targetDockHost != null)
+				var targetDockGrid = FindDockGridAt(posRoot, visualRoot);
+				if (targetDockGrid != null)
 				{
-					var posInDockHost = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
-					if (posInDockHost.HasValue)
+					var posInDockGrid = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
+					if (posInDockGrid.HasValue)
 					{
-						var relativePos = posRoot - posInDockHost.Value;
-						targetDockHost.Dock(this, relativePos);
-						DockHost = targetDockHost;
+						var relativePos = posRoot - posInDockGrid.Value;
+						targetDockGrid.Dock(this, relativePos);
+						DockGrid = targetDockGrid;
 					}
 				}
 			}
@@ -364,9 +364,9 @@ public partial class DockablePanel : UserControl
 
 		isTransitioningToFloat = true;
 		
-		if (DockHost != null)
+		if (DockGrid != null)
 		{
-			DockHost.RemovePanel(this);
+			DockGrid.RemovePanel(this);
 		}
 		
 		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
@@ -435,15 +435,15 @@ public partial class DockablePanel : UserControl
 			return;
 		}
 
-		var targetDockHost = FindDockHostAt(posRoot, visualRoot);
-		if (targetDockHost != null)
+		var targetDockGrid = FindDockGridAt(posRoot, visualRoot);
+		if (targetDockGrid != null)
 		{
-			var dockTopLeft = targetDockHost.TranslatePoint(new Point(0, 0), visualRoot);
-			var dockPos = targetDockHost.TranslatePoint(new Point(0, 0), FloatingLayer);
+			var dockTopLeft = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
+			var dockPos = targetDockGrid.TranslatePoint(new Point(0, 0), FloatingLayer);
 			if (dockTopLeft.HasValue && dockPos.HasValue)
 			{
 				var relativePos = posRoot - dockTopLeft.Value;
-				var previewRect = targetDockHost.GetDockPreviewRect(relativePos);
+				var previewRect = targetDockGrid.GetDockPreviewRect(relativePos);
 				if (previewRect.Width > 0 && previewRect.Height > 0)
 				{
 					EnsurePreviewBorder();
@@ -453,11 +453,11 @@ public partial class DockablePanel : UserControl
 					previewBorder.Height = previewRect.Height;
 					double offsetX = 0;
 					double offsetY = 0;
-					if (targetDockHost.Bounds.Width <= 0 || targetDockHost.Bounds.Height <= 0)
+					if (targetDockGrid.Bounds.Width <= 0 || targetDockGrid.Bounds.Height <= 0)
 					{
-						if (targetDockHost.DockEdge == DockEdge.Right)
+						if (targetDockGrid.DockEdge == DockEdge.Right)
 							offsetX = -previewRect.Width;
-						else if (targetDockHost.DockEdge == DockEdge.Bottom)
+						else if (targetDockGrid.DockEdge == DockEdge.Bottom)
 							offsetY = -previewRect.Height;
 					}
 					Canvas.SetLeft(previewBorder, dockPos.Value.X + previewRect.X + offsetX);
@@ -475,9 +475,9 @@ public partial class DockablePanel : UserControl
 		}
 	}
 
-	DockHost? FindDockHostAt(Point posRoot, Visual visualRoot)
+	DockGrid? FindDockGridAt(Point posRoot, Visual visualRoot)
 	{
-		var dockHosts = visualRoot.GetVisualDescendants().OfType<DockHost>();
+		var dockHosts = visualRoot.GetVisualDescendants().OfType<DockGrid>();
 		foreach (var dh in dockHosts)
 		{
 			var dockTopLeft = dh.TranslatePoint(new Point(0, 0), visualRoot);
@@ -508,7 +508,7 @@ public partial class DockablePanel : UserControl
 		FloatingLayer.Children.Add(previewBorder);
 	}
 
-	Rect GetDockHotRect(DockHost dockHost, Point dockTopLeft, Visual visualRoot)
+	Rect GetDockHotRect(DockGrid dockHost, Point dockTopLeft, Visual visualRoot)
 	{
 		double scale = 1.0;
 		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
@@ -677,7 +677,7 @@ public partial class DockablePanel : UserControl
 					var pointer = e.Pointer;
 
 					TabGroup.SetActive(panel);
-					DockHost?.RebuildGrid();
+					DockGrid?.RebuildGrid();
 					Dispatcher.UIThread.InvokeAsync(() =>
 					{
 						panel.BeginDragAfterActivate(pressPointRoot, pointer, pressPointInBorder.X);

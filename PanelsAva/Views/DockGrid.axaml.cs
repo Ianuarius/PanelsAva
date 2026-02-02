@@ -51,13 +51,13 @@ public class TabGroup
 	}
 }
 
-public partial class DockHost : UserControl
+public partial class DockGrid : UserControl
 {
 	Grid? panelsGrid;
 	List<TabGroup> dockedItems = new();
 	int lastDockedItemsCount;
 
-	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockHost, bool>(nameof(IsHorizontal), false);
+	public static readonly StyledProperty<bool> IsHorizontalProperty = AvaloniaProperty.Register<DockGrid, bool>(nameof(IsHorizontal), false);
 
 	public bool IsHorizontal
 	{
@@ -74,15 +74,15 @@ public partial class DockHost : UserControl
 	public event EventHandler? DockedItemsChanged;
 	public event EventHandler? LayoutChanged;
 
-	public DockHost()
+	public DockGrid()
 	{
 		InitializeComponent();
 		panelsGrid = this.FindControl<Grid>("PanelsGrid");
 	}
 
-	public DockHostLayout GetLayout()
+	public DockGridLayout GetLayout()
 	{
-		var layout = new DockHostLayout
+		var layout = new DockGridLayout
 		{
 			DockEdge = DockEdge.ToString()
 		};
@@ -103,7 +103,7 @@ public partial class DockHost : UserControl
 		return layout;
 	}
 
-	public void ApplyLayout(DockHostLayout? layout, Func<string, DockablePanel?> resolvePanel)
+	public void ApplyLayout(DockGridLayout? layout, Func<string, DockablePanel?> resolvePanel)
 	{
 		dockedItems.Clear();
 		if (layout != null)
@@ -117,7 +117,7 @@ public partial class DockHost : UserControl
 					var panel = resolvePanel(item.Panels[j]);
 					if (panel != null)
 					{
-						panel.DockHost = this;
+						panel.DockGrid = this;
 						tg.AddPanel(panel);
 					}
 				}
@@ -414,7 +414,7 @@ public partial class DockHost : UserControl
 		return tg;
 	}
 
-	void ApplyItemSizes(DockHostLayout? layout)
+	void ApplyItemSizes(DockGridLayout? layout)
 	{
 		if (layout == null || panelsGrid == null) return;
 		if (layout.ItemSizes.Count == 0) return;

@@ -28,7 +28,7 @@
 			<ColumnDefinition Width="260" MinWidth="100" MaxWidth="500" />
 			<ColumnDefinition Width="0" />
 		</Grid.ColumnDefinitions>
-		<views:DockHost x:Name="LeftDockHost" Grid.Row="1" Grid.Column="1" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<views:DockGrid x:Name="LeftDockGrid" Grid.Row="1" Grid.Column="1" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 		<GridSplitter x:Name="LeftDockSplitter" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
 		<Grid Grid.Row="1" Grid.Column="3">
 			<Grid.RowDefinitions>
@@ -41,9 +41,9 @@
 			</Border>
 		</Grid>
 		<GridSplitter x:Name="RightDockSplitter" Grid.Row="1" Grid.Column="4" Grid.RowSpan="3" Background="#646464" ResizeDirection="Columns" Width="4" />
-		<views:DockHost x:Name="RightDockHost" Grid.Row="1" Grid.Column="5" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<views:DockGrid x:Name="RightDockGrid" Grid.Row="1" Grid.Column="5" Grid.RowSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 		<GridSplitter x:Name="BottomDockSplitter" Grid.Row="2" Grid.Column="3" Background="#646464" ResizeDirection="Rows" Height="4" />
-		<views:DockHost x:Name="BottomDockHost" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHorizontal="True" />
+		<views:DockGrid x:Name="BottomDockGrid" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHorizontal="True" />
 		<views:Toolbar x:Name="ToolbarControl" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="5" />
 	</Grid>
 </UserControl>

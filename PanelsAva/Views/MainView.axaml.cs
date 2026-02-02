@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.VisualTree;
 using System;
 using PanelsAva.ViewModels;
@@ -15,9 +15,9 @@ namespace PanelsAva.Views;
 
 public partial class MainView : UserControl
 {
-	DockHost? leftDockHost;
-	DockHost? rightDockHost;
-	DockHost? bottomDockHost;
+	DockGrid? leftDockGrid;
+	DockGrid? rightDockGrid;
+	DockGrid? bottomDockGrid;
 	Toolbar? toolbar;
 	RowDefinition? topToolbarRow;
 	RowDefinition? bottomToolbarRow;
@@ -134,7 +134,7 @@ public partial class MainView : UserControl
 	void UpdateToolbarPosition(ToolbarPosition position)
 	{
 		if (toolbar == null || mainGrid == null) return;
-		if (leftDockHost == null || rightDockHost == null || bottomDockHost == null) return;
+		if (leftDockGrid == null || rightDockGrid == null || bottomDockGrid == null) return;
 
 		const double toolbarSize = 40;
 
@@ -151,16 +151,16 @@ public partial class MainView : UserControl
 				Grid.SetColumn(toolbar!, 1);
 				Grid.SetColumnSpan(toolbar!, 5);
 				Grid.SetRowSpan(toolbar!, 1);
-				Grid.SetRow(leftDockHost!, 1);
-				Grid.SetRowSpan(leftDockHost!, 3);
+				Grid.SetRow(leftDockGrid!, 1);
+				Grid.SetRowSpan(leftDockGrid!, 3);
 				Grid.SetRow(leftDockSplitter!, 1);
 				Grid.SetRowSpan(leftDockSplitter!, 3);
 				Grid.SetRow(rightDockSplitter!, 1);
 				Grid.SetRowSpan(rightDockSplitter!, 3);
-				Grid.SetRow(rightDockHost!, 1);
-				Grid.SetRowSpan(rightDockHost!, 3);
+				Grid.SetRow(rightDockGrid!, 1);
+				Grid.SetRowSpan(rightDockGrid!, 3);
 				Grid.SetRow(bottomDockSplitter!, 2);
-				Grid.SetRow(bottomDockHost!, 3);
+				Grid.SetRow(bottomDockGrid!, 3);
 				break;
 			case ToolbarPosition.Bottom:
 				if (bottomToolbarRow != null) bottomToolbarRow.Height = new GridLength(toolbarSize);
@@ -168,16 +168,16 @@ public partial class MainView : UserControl
 				Grid.SetColumn(toolbar!, 1);
 				Grid.SetColumnSpan(toolbar!, 5);
 				Grid.SetRowSpan(toolbar!, 1);
-				Grid.SetRow(leftDockHost!, 1);
-				Grid.SetRowSpan(leftDockHost!, 3);
+				Grid.SetRow(leftDockGrid!, 1);
+				Grid.SetRowSpan(leftDockGrid!, 3);
 				Grid.SetRow(leftDockSplitter!, 1);
 				Grid.SetRowSpan(leftDockSplitter!, 3);
 				Grid.SetRow(rightDockSplitter!, 1);
 				Grid.SetRowSpan(rightDockSplitter!, 3);
-				Grid.SetRow(rightDockHost!, 1);
-				Grid.SetRowSpan(rightDockHost!, 3);
+				Grid.SetRow(rightDockGrid!, 1);
+				Grid.SetRowSpan(rightDockGrid!, 3);
 				Grid.SetRow(bottomDockSplitter!, 2);
-				Grid.SetRow(bottomDockHost!, 3);
+				Grid.SetRow(bottomDockGrid!, 3);
 				break;
 			case ToolbarPosition.Left:
 				if (leftToolbarColumn != null) leftToolbarColumn.Width = new GridLength(toolbarSize);
@@ -185,22 +185,22 @@ public partial class MainView : UserControl
 				Grid.SetColumn(toolbar!, 0);
 				Grid.SetRowSpan(toolbar!, 3);
 				Grid.SetColumnSpan(toolbar!, 1);
-				Grid.SetRow(leftDockHost!, 1);
-				Grid.SetColumn(leftDockHost!, 1);
-				Grid.SetRowSpan(leftDockHost!, 3);
+				Grid.SetRow(leftDockGrid!, 1);
+				Grid.SetColumn(leftDockGrid!, 1);
+				Grid.SetRowSpan(leftDockGrid!, 3);
 				Grid.SetRow(leftDockSplitter!, 1);
 				Grid.SetColumn(leftDockSplitter!, 2);
 				Grid.SetRowSpan(leftDockSplitter!, 3);
 				Grid.SetRow(rightDockSplitter!, 1);
 				Grid.SetColumn(rightDockSplitter!, 4);
 				Grid.SetRowSpan(rightDockSplitter!, 3);
-				Grid.SetRow(rightDockHost!, 1);
-				Grid.SetColumn(rightDockHost!, 5);
-				Grid.SetRowSpan(rightDockHost!, 3);
+				Grid.SetRow(rightDockGrid!, 1);
+				Grid.SetColumn(rightDockGrid!, 5);
+				Grid.SetRowSpan(rightDockGrid!, 3);
 				Grid.SetRow(bottomDockSplitter!, 2);
 				Grid.SetColumn(bottomDockSplitter!, 3);
-				Grid.SetRow(bottomDockHost!, 3);
-				Grid.SetColumn(bottomDockHost!, 3);
+				Grid.SetRow(bottomDockGrid!, 3);
+				Grid.SetColumn(bottomDockGrid!, 3);
 				break;
 			case ToolbarPosition.Right:
 				if (rightToolbarColumn != null) rightToolbarColumn.Width = new GridLength(toolbarSize);
@@ -208,31 +208,31 @@ public partial class MainView : UserControl
 				Grid.SetColumn(toolbar!, 6);
 				Grid.SetRowSpan(toolbar!, 3);
 				Grid.SetColumnSpan(toolbar!, 1);
-				Grid.SetRow(leftDockHost!, 1);
-				Grid.SetColumn(leftDockHost!, 1);
-				Grid.SetRowSpan(leftDockHost!, 3);
+				Grid.SetRow(leftDockGrid!, 1);
+				Grid.SetColumn(leftDockGrid!, 1);
+				Grid.SetRowSpan(leftDockGrid!, 3);
 				Grid.SetRow(leftDockSplitter!, 1);
 				Grid.SetColumn(leftDockSplitter!, 2);
 				Grid.SetRowSpan(leftDockSplitter!, 3);
 				Grid.SetRow(rightDockSplitter!, 1);
 				Grid.SetColumn(rightDockSplitter!, 4);
 				Grid.SetRowSpan(rightDockSplitter!, 3);
-				Grid.SetRow(rightDockHost!, 1);
-				Grid.SetColumn(rightDockHost!, 5);
-				Grid.SetRowSpan(rightDockHost!, 3);
+				Grid.SetRow(rightDockGrid!, 1);
+				Grid.SetColumn(rightDockGrid!, 5);
+				Grid.SetRowSpan(rightDockGrid!, 3);
 				Grid.SetRow(bottomDockSplitter!, 2);
 				Grid.SetColumn(bottomDockSplitter!, 3);
-				Grid.SetRow(bottomDockHost!, 3);
-				Grid.SetColumn(bottomDockHost!, 3);
+				Grid.SetRow(bottomDockGrid!, 3);
+				Grid.SetColumn(bottomDockGrid!, 3);
 				break;
 		}
 	}
 
 	void OnLoaded(object? sender, EventArgs e)
 	{
-		leftDockHost = this.FindControl<DockHost>("LeftDockHost");
-		rightDockHost = this.FindControl<DockHost>("RightDockHost");
-		bottomDockHost = this.FindControl<DockHost>("BottomDockHost");
+		leftDockGrid = this.FindControl<DockGrid>("LeftDockGrid");
+		rightDockGrid = this.FindControl<DockGrid>("RightDockGrid");
+		bottomDockGrid = this.FindControl<DockGrid>("BottomDockGrid");
 		toolbar = this.FindControl<Toolbar>("ToolbarControl");
 		mainGrid = this.FindControl<Grid>("MainGrid");
 		if (mainGrid != null)
@@ -255,83 +255,83 @@ public partial class MainView : UserControl
 			UpdateToolbarPosition(toolbar.Position);
 		}
 		InitDockSizes();
-		HookDockHostEvents();
-		if (leftDockHost != null) leftDockHost.DockEdge = DockEdge.Left;
-		if (rightDockHost != null) rightDockHost.DockEdge = DockEdge.Right;
-		if (bottomDockHost != null) bottomDockHost.DockEdge = DockEdge.Bottom;
+		HookDockGridEvents();
+		if (leftDockGrid != null) leftDockGrid.DockEdge = DockEdge.Left;
+		if (rightDockGrid != null) rightDockGrid.DockEdge = DockEdge.Right;
+		if (bottomDockGrid != null) bottomDockGrid.DockEdge = DockEdge.Bottom;
 		if (DataContext == null && this.Parent is Control parentControl && parentControl.DataContext != null)
 			DataContext = parentControl.DataContext;
 		SetViewModel(DataContext as MainViewModel);
 
 		if (layersPanel != null) return;
 		
-		if (leftDockHost != null && floatingLayer != null)
+		if (leftDockGrid != null && floatingLayer != null)
 		{
 			layersPanel = new DockablePanel
 			{
 				Title = "Layers",
 				Content = new LayersPanel(),
-				DockHost = leftDockHost,
+				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			layersPanel.CloseRequested += OnPanelCloseRequested;
-			leftDockHost.AddPanel(layersPanel);
+			leftDockGrid.AddPanel(layersPanel);
 
 			propertiesPanel = new DockablePanel
 			{
 				Title = "Properties",
 				Content = new PropertiesPanel(),
-				DockHost = leftDockHost,
+				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			propertiesPanel.CloseRequested += OnPanelCloseRequested;
-			leftDockHost.AddPanel(propertiesPanel);
+			leftDockGrid.AddPanel(propertiesPanel);
 
 			colorPanel = new DockablePanel
 			{
 				Title = "Color",
 				Content = new ColorPanel(),
-				DockHost = leftDockHost,
+				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			colorPanel.CloseRequested += OnPanelCloseRequested;
-			leftDockHost.AddPanel(colorPanel);
+			leftDockGrid.AddPanel(colorPanel);
 
 			brushesPanel = new DockablePanel
 			{
 				Title = "Brushes",
 				Content = new BrushesPanel(),
-				DockHost = leftDockHost,
+				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			brushesPanel.CloseRequested += OnPanelCloseRequested;
-			leftDockHost.AddPanel(brushesPanel);
+			leftDockGrid.AddPanel(brushesPanel);
 		}
 
-		if (rightDockHost != null && floatingLayer != null)
+		if (rightDockGrid != null && floatingLayer != null)
 		{
 			historyPanel = new DockablePanel
 			{
 				Title = "History",
 				Content = new HistoryPanel(),
-				DockHost = rightDockHost,
+				DockGrid = rightDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			historyPanel.CloseRequested += OnPanelCloseRequested;
-			rightDockHost.AddPanel(historyPanel);
+			rightDockGrid.AddPanel(historyPanel);
 		}
 
-		if (bottomDockHost != null && floatingLayer != null)
+		if (bottomDockGrid != null && floatingLayer != null)
 		{
 			timelinePanel = new DockablePanel
 			{
 				Title = "Timeline",
 				Content = new TimelinePanel(),
-				DockHost = bottomDockHost,
+				DockGrid = bottomDockGrid,
 				FloatingLayer = floatingLayer
 			};
 			timelinePanel.CloseRequested += OnPanelCloseRequested;
-			bottomDockHost.AddPanel(timelinePanel);
+			bottomDockGrid.AddPanel(timelinePanel);
 		}
 		UpdateDockHostSizes();
 		HookLayoutEvents();
@@ -339,13 +339,13 @@ public partial class MainView : UserControl
 		UpdatePanelFloatability();
 	}
 
-	DockablePanel CreatePanel(string title, Control content, DockHost host, Canvas floatingLayer)
+	DockablePanel CreatePanel(string title, Control content, DockGrid host, Canvas floatingLayer)
 	{
 		var panel = new DockablePanel
 		{
 			Title = title,
 			Content = content,
-			DockHost = host,
+			DockGrid = host,
 			FloatingLayer = floatingLayer
 		};
 		panel.CloseRequested += OnPanelCloseRequested;
