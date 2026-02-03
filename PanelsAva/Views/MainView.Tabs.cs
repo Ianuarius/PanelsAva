@@ -127,7 +127,8 @@ public partial class MainView
 		panel.UpdateFromDocument();
 
 		if (pointer != null)
-			panel.BeginExternalDrag(pointer, posRoot, dragOffsetX, dragOffsetY);
+		{
+		}
 
 		if (currentViewModel != null && currentViewModel.CurrentDocument == tab.Document)
 		{

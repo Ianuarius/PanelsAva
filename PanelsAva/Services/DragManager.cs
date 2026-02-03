@@ -1,0 +1,352 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Rendering;
+using Avalonia.VisualTree;
+using System;
+using System.Linq;
+using PanelsAva.Views;
+
+namespace PanelsAva.Services;
+
+public enum DragSourceType
+{
+	PanelTabGroup,
+	FileTab,
+	FloatingPanel,
+	Toolbar
+}
+
+public class DragManager
+{
+	readonly Visual visualRoot;
+	readonly Canvas floatingLayer;
+	bool isDragging;
+	bool thresholdExceeded;
+	object? dragSource;
+	Pointer? currentPointer;
+	Point pressPointRoot;
+	double dragOffsetX;
+	double dragOffsetY;
+	double dragOffsetRatioX;
+	Control? captureControl;
+	bool wasFloating;
+	Border? previewBorder;
+
+	public DragManager(Visual visualRoot, Canvas floatingLayer)
+	{
+		this.visualRoot = visualRoot;
+		this.floatingLayer = floatingLayer;
+	}
+
+	public bool IsDragging => isDragging;
+	public bool ThresholdExceeded => thresholdExceeded;
+
+	public void StartPotentialDrag(object source, Pointer pointer, Point pressPoint, double offsetX, double offsetY, double offsetRatioX, Control? capture, bool floating)
+	{
+		if (isDragging) CancelDrag();
+		dragSource = source;
+		currentPointer = pointer;
+		pressPointRoot = pressPoint;
+		dragOffsetX = offsetX;
+		dragOffsetY = offsetY;
+		dragOffsetRatioX = offsetRatioX;
+		captureControl = capture;
+		wasFloating = floating;
+		isDragging = true;
+		thresholdExceeded = false;
+		if (capture != null) pointer.Capture(capture);
+	}
+
+	public void UpdateDrag(Point posRoot)
+	{
+		if (!isDragging) return;
+		var delta = posRoot - pressPointRoot;
+		double scale = 1.0;
+		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
+		var threshold = 10 * scale;
+		if (delta.X * delta.X + delta.Y * delta.Y < threshold * threshold) return;
+		thresholdExceeded = true;
+
+		if (dragSource is PanelTabGroup panel)
+		{
+			if (!panel.IsFloating && panel.CanFloat)
+			{
+				if (panel.DockGrid != null) panel.DockGrid.RemovePanel(panel);
+				var panelPosInRoot = panel.TranslatePoint(new Point(0, 0), visualRoot);
+				var floatingLayerPosInRoot = floatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
+				if (panelPosInRoot.HasValue && floatingLayerPosInRoot.HasValue)
+				{
+					var panelPosInFloatingLayer = panelPosInRoot.Value - floatingLayerPosInRoot.Value;
+					MainView.RemoveFromParent(panel);
+					floatingLayer.Children.Add(panel);
+					panel.SetValue(Panel.ZIndexProperty, 1);
+					Canvas.SetLeft(panel, panelPosInFloatingLayer.X);
+					Canvas.SetTop(panel, panelPosInFloatingLayer.Y);
+				}
+				else
+				{
+					MainView.RemoveFromParent(panel);
+					floatingLayer.Children.Add(panel);
+					panel.SetValue(Panel.ZIndexProperty, 1);
+					Canvas.SetLeft(panel, 0);
+					Canvas.SetTop(panel, 0);
+				}
+				panel.SetFloating(true);
+				panel.RaiseLayoutChanged();
+			}
+			if (panel.IsFloating)
+			{
+				var floatingLayerPos = floatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
+				if (floatingLayerPos.HasValue)
+				{
+					var dragOffset = new Point(panel.Bounds.Width * dragOffsetRatioX, dragOffsetY);
+					var posInFloatingLayer = posRoot - floatingLayerPos.Value;
+					var panelPos = posInFloatingLayer - dragOffset;
+					Canvas.SetLeft(panel, panelPos.X);
+					Canvas.SetTop(panel, panelPos.Y);
+					panel.RaiseLayoutChanged();
+				}
+				var previewRect = ComputePanelPreview(panel, posRoot);
+				if (previewRect != null) ShowPreview(previewRect);
+				else ClearPreview();
+			}
+		}
+	}
+
+	public void EndDrag(Point posRoot)
+	{
+		if (!isDragging) return;
+		try
+		{
+			if (dragSource is PanelTabGroup panel && panel.IsFloating)
+			{
+				var tabDropTarget = FindPanelAt(panel, posRoot);
+				if (tabDropTarget != null)
+				{
+					var targetDockGrid = tabDropTarget.DockGrid;
+					if (targetDockGrid != null)
+					{
+						panel.SetFloating(false);
+						targetDockGrid.DockAsTab(panel, tabDropTarget);
+						panel.DockGrid = targetDockGrid;
+						panel.RefreshTabStrip();
+					}
+				}
+				else
+				{
+					var targetDockGrid = FindDockGridAt(posRoot);
+					if (targetDockGrid != null)
+					{
+						var posInDockGrid = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
+						if (posInDockGrid.HasValue)
+						{
+							var relativePos = posRoot - posInDockGrid.Value;
+							targetDockGrid.Dock(panel, relativePos);
+							panel.DockGrid = targetDockGrid;
+							panel.RefreshTabStrip();
+						}
+					}
+				}
+				panel.RaiseLayoutChanged();
+			}
+		}
+		finally
+		{
+			ReleaseDrag();
+		}
+	}
+
+	public void CancelDrag()
+	{
+		ReleaseDrag();
+	}
+
+	/// <summary>
+	/// Attempt to recover pointer capture when a captured control loses capture during a drag.
+	/// If recovery succeeds, update internal captureControl; otherwise leave drag active so
+	/// subsequent pointer events can resume or caller can cancel explicitly.
+	/// </summary>
+	public void HandleCaptureLost(Pointer pointer)
+	{
+		if (!isDragging) return;
+		if (pointer == null) return;
+		// Only attempt recovery for the current pointer
+		if (currentPointer == null || pointer != currentPointer) return;
+
+		// Try to re-capture to the previously requested control
+		if (captureControl != null)
+		{
+			currentPointer?.Capture(captureControl);
+			// If successful, keep captureControl as-is. There's no explicit success flag,
+			// but Capture will set pointer capture in the platform if possible.
+			return;
+		}
+
+		// If we don't have a captureControl, try to capture the drag source if it's a Control
+		if (dragSource is Control ctrl)
+		{
+			currentPointer?.Capture(ctrl);
+			captureControl = ctrl;
+			return;
+		}
+
+		// As a last resort, try capturing to the floating layer or visual root if possible
+		if (floatingLayer is Control floatingCtrl)
+		{
+			currentPointer?.Capture(floatingCtrl);
+			captureControl = floatingCtrl;
+			return;
+		}
+	}
+
+	void ReleaseDrag()
+	{
+		if (!isDragging) return;
+		currentPointer?.Capture(null);
+		ClearPreview();
+		isDragging = false;
+		thresholdExceeded = false;
+		dragSource = null;
+		currentPointer = null;
+		captureControl = null;
+	}
+
+	PreviewRect? ComputePanelPreview(PanelTabGroup panel, Point posRoot)
+	{
+		var tabDropTarget = FindPanelAt(panel, posRoot);
+		if (tabDropTarget != null)
+		{
+			var targetPos = tabDropTarget.TranslatePoint(new Point(0, 0), floatingLayer);
+			if (targetPos.HasValue)
+			{
+				return new PreviewRect
+				{
+					Left = targetPos.Value.X,
+					Top = targetPos.Value.Y,
+					Width = tabDropTarget.Bounds.Width,
+					Height = tabDropTarget.Bounds.Height
+				};
+			}
+		}
+		var targetDockGrid = FindDockGridAt(posRoot);
+		if (targetDockGrid != null)
+		{
+			var dockTopLeft = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
+			var dockPos = targetDockGrid.TranslatePoint(new Point(0, 0), floatingLayer);
+			if (dockTopLeft.HasValue && dockPos.HasValue)
+			{
+				var relativePos = posRoot - dockTopLeft.Value;
+				var previewRect = targetDockGrid.GetDockPreviewRect(relativePos);
+				if (previewRect.Width > 0 && previewRect.Height > 0)
+				{
+					double offsetX = 0;
+					double offsetY = 0;
+					if (targetDockGrid.Bounds.Width <= 0 || targetDockGrid.Bounds.Height <= 0)
+					{
+						if (targetDockGrid.DockEdge == DockEdge.Right) offsetX = -previewRect.Width;
+						else if (targetDockGrid.DockEdge == DockEdge.Bottom) offsetY = -previewRect.Height;
+					}
+					return new PreviewRect
+					{
+						Left = dockPos.Value.X + previewRect.X + offsetX,
+						Top = dockPos.Value.Y + previewRect.Y + offsetY,
+						Width = previewRect.Width,
+						Height = previewRect.Height
+					};
+				}
+			}
+		}
+		return null;
+	}
+
+	PanelTabGroup? FindPanelAt(PanelTabGroup source, Point posRoot)
+	{
+		var panels = visualRoot.GetVisualDescendants().OfType<PanelTabGroup>();
+		foreach (var p in panels)
+		{
+			if (p == source || p.IsFloating) continue;
+			var tabStrip = p.GetType().GetField("tabStrip", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(p) as StackPanel;
+			if (tabStrip == null || !tabStrip.IsVisible) continue;
+			var tabStripTopLeft = tabStrip.TranslatePoint(new Point(0, 0), visualRoot);
+			if (!tabStripTopLeft.HasValue) continue;
+			var width = tabStrip.Bounds.Width;
+			var height = tabStrip.Bounds.Height;
+			if (width <= 0 || height <= 0) continue;
+			var rect = new Rect(tabStripTopLeft.Value.X, tabStripTopLeft.Value.Y, width, height);
+			if (rect.Contains(posRoot)) return p;
+		}
+		return null;
+	}
+
+	DockGrid? FindDockGridAt(Point posRoot)
+	{
+		var dockHosts = visualRoot.GetVisualDescendants().OfType<DockGrid>();
+		foreach (var dh in dockHosts)
+		{
+			var dockTopLeft = dh.TranslatePoint(new Point(0, 0), visualRoot);
+			if (dockTopLeft.HasValue)
+			{
+				var dockRect = new Rect(dockTopLeft.Value, dh.Bounds.Size);
+				if (dockRect.Width <= 0 || dockRect.Height <= 0)
+					dockRect = GetDockHotRect(dh, dockTopLeft.Value);
+				if (dockRect.Contains(posRoot)) return dh;
+			}
+		}
+		return null;
+	}
+
+	Rect GetDockHotRect(DockGrid dockHost, Point dockTopLeft)
+	{
+		double scale = 1.0;
+		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
+		double hotSize = 100 * scale;
+		var rootBounds = visualRoot.Bounds;
+		var height = dockHost.Bounds.Height > 0 ? dockHost.Bounds.Height : rootBounds.Height;
+		var width = dockHost.Bounds.Width > 0 ? dockHost.Bounds.Width : rootBounds.Width;
+		if (dockHost.DockEdge == DockEdge.Left) return new Rect(dockTopLeft.X, dockTopLeft.Y, hotSize, height);
+		if (dockHost.DockEdge == DockEdge.Right) return new Rect(dockTopLeft.X - hotSize, dockTopLeft.Y, hotSize, height);
+		if (dockHost.DockEdge == DockEdge.Bottom) return new Rect(dockTopLeft.X, dockTopLeft.Y - hotSize, width, hotSize);
+		return new Rect(dockTopLeft, dockHost.Bounds.Size);
+	}
+
+	void ShowPreview(PreviewRect rect)
+	{
+		if (previewBorder == null)
+		{
+			previewBorder = new Border { Background = new SolidColorBrush(Colors.Blue), Opacity = 0.5 };
+			previewBorder.SetValue(Panel.ZIndexProperty, 0);
+			floatingLayer.Children.Add(previewBorder);
+		}
+		previewBorder.Width = rect.Width;
+		previewBorder.Height = rect.Height;
+		Canvas.SetLeft(previewBorder, rect.Left);
+		Canvas.SetTop(previewBorder, rect.Top);
+	}
+
+	void ClearPreview()
+	{
+		if (previewBorder != null)
+		{
+			floatingLayer.Children.Remove(previewBorder);
+			previewBorder = null;
+		}
+	}
+}
+
+public class PreviewRect
+{
+	public double Left { get; set; }
+	public double Top { get; set; }
+	public double Width { get; set; }
+	public double Height { get; set; }
+}
+
+public class ToolbarPreviewRect
+{
+	public double Left { get; set; }
+	public double Top { get; set; }
+	public double Width { get; set; }
+	public double Height { get; set; }
+}

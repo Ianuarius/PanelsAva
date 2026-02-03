@@ -1,13 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Rendering;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System;
-using System.Diagnostics;
-using System.Linq;
 
 namespace PanelsAva.Views;
 
@@ -25,45 +20,14 @@ public partial class PanelTabGroup : UserControl
 	public event EventHandler? CloseRequested;
 	public event EventHandler? LayoutChanged;
 
-	Border? titleBar;
 	StackPanel? tabStrip;
-	bool isDragging;
-	bool isTransitioningToFloat;
-	Point pressPointRoot;
-	double dragOffsetRatioX;
-	double dragOffsetAbsoluteY;
-	Point panelPosAtPressRoot;
-	Pointer? currentPointer;
-	Control? dragHandle;
-	Control? previewBorder;
-	PanelTabGroup? tabDropTarget;
-	Button? closeButton;
-	MenuItem? closeMenuItem;
+	MainView? mainView;
 
 	public PanelTabGroup()
 	{
 		InitializeComponent();
 		DataContext = this;
-		titleBar = this.FindControl<Border>("TitleBar");
 		tabStrip = this.FindControl<StackPanel>("TabStrip");
-		closeButton = this.FindControl<Button>("CloseButton");
-		if (closeButton != null)
-		{
-			closeButton.Click += CloseButtonOnClick;
-		}
-		if (titleBar != null)
-		{
-			titleBar.PointerPressed += TitleBarOnPointerPressed;
-			titleBar.PointerMoved += TitleBarOnPointerMoved;
-			titleBar.PointerReleased += TitleBarOnPointerReleased;
-			titleBar.PointerCaptureLost += TitleBarOnPointerCaptureLost;
-			// Initially docked, so set context menu
-			var contextMenu = new ContextMenu();
-			closeMenuItem = new MenuItem { Header = "Close" };
-			closeMenuItem.Click += CloseMenuItemOnClick;
-			contextMenu.Items.Add(closeMenuItem);
-			titleBar.ContextMenu = contextMenu;
-		}
 	}
 
 	public string Title
@@ -107,36 +71,7 @@ public partial class PanelTabGroup : UserControl
 	public void SetFloating(bool floating)
 	{
 		IsFloating = floating;
-		
-		if (floating)
-		{
-			TabGroup = null;
-			RefreshTabStrip();
-		}
-		
-		if (closeButton != null)
-		{
-			closeButton.IsVisible = floating;
-		}
-		
-		if (titleBar != null)
-		{
-			if (floating)
-			{
-				titleBar.ContextMenu = null;
-			}
-			else
-			{
-				if (titleBar.ContextMenu == null)
-				{
-					var contextMenu = new ContextMenu();
-					closeMenuItem = new MenuItem { Header = "Close" };
-					closeMenuItem.Click += CloseMenuItemOnClick;
-					contextMenu.Items.Add(closeMenuItem);
-					titleBar.ContextMenu = contextMenu;
-				}
-			}
-		}
+		RefreshTabStrip();
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
@@ -150,422 +85,6 @@ public partial class PanelTabGroup : UserControl
 			return new Size(width, height);
 		}
 		return availableSize;
-	}
-
-	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)
-	{
-		if (titleBar == null) return;
-		BeginDrag(titleBar, e);
-	}
-
-	void TitleBarOnPointerMoved(object? sender, PointerEventArgs e)
-	{
-		ContinueDrag(e);
-	}
-
-	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
-	{
-		EndDrag(e);
-	}
-
-	void TitleBarOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-	{
-		DragCaptureLost(e);
-	}
-
-	void BeginDrag(Control handle, PointerPressedEventArgs e)
-	{
-		var e2 = e.GetCurrentPoint(handle);
-		if (!e2.Properties.IsLeftButtonPressed) return;
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		pressPointRoot = e.GetPosition(visualRoot);
-
-		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (panelPos.HasValue)
-		{
-			panelPosAtPressRoot = panelPos.Value;
-			var dragOffset = pressPointRoot - panelPosAtPressRoot;
-			dragOffsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
-			dragOffsetAbsoluteY = dragOffset.Y;
-		}
-
-		SetupDragState(handle, e.Pointer);
-		e.Handled = true;
-	}
-
-	/// <summary>Continues the drag operation, initiating floating if movement exceeds threshold, or updating floating position and dock preview.</summary>
-	void ContinueDrag(PointerEventArgs e)
-	{
-		if (!isDragging) return;
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var posRoot = e.GetPosition(visualRoot);
-		var delta = posRoot - pressPointRoot;
-		double scale = 1.0;
-		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
-		
-		var threshold = 10 * scale;
-		if (!IsFloating)
-		{
-			if (delta.X * delta.X + delta.Y * delta.Y >= threshold * threshold)
-			{
-				if (!CanFloat) return;
-				BeginFloating(posRoot, visualRoot);
-				MoveFloating(posRoot);
-			}
-		}
-		else
-		{
-			MoveFloating(posRoot);
-			UpdateDockPreview(posRoot, visualRoot);
-		}
-
-		e.Handled = true;
-	}
-
-	/// <summary>Finalizes the drag operation, docking the panel if floating based on drop location, and cleaning up drag state.</summary>
-	void EndDrag(PointerReleasedEventArgs e)
-	{
-		if (!isDragging) return;
-
-		isDragging = false;
-		currentPointer?.Capture(null);
-		currentPointer = null;
-		dragHandle = null;
-		e.Pointer.Capture(null);
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var posRoot = e.GetPosition(visualRoot);
-		if (IsFloating)
-		{
-			if (tabDropTarget != null)
-			{
-				var targetDockGrid = tabDropTarget.DockGrid;
-				if (targetDockGrid != null)
-				{
-					SetFloating(false);
-					targetDockGrid.DockAsTab(this, tabDropTarget);
-					DockGrid = targetDockGrid;
-				}
-				tabDropTarget = null;
-			}
-			else
-			{
-				var targetDockGrid = FindDockGridAt(posRoot, visualRoot);
-				if (targetDockGrid != null)
-				{
-					var posInDockGrid = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
-					if (posInDockGrid.HasValue)
-					{
-						var relativePos = posRoot - posInDockGrid.Value;
-						targetDockGrid.Dock(this, relativePos);
-						DockGrid = targetDockGrid;
-					}
-				}
-			}
-		}
-
-		if (previewBorder != null)
-		{
-			FloatingLayer?.Children.Remove(previewBorder);
-			previewBorder = null;
-		}
-		LayoutChanged?.Invoke(this, EventArgs.Empty);
-	}
-
-	/// <summary>Handles pointer capture loss during drag, resetting drag state and cleaning up preview elements if not transitioning to floating.</summary>
-	void DragCaptureLost(PointerCaptureLostEventArgs e)
-	{
-		if (!isTransitioningToFloat)
-		{
-			currentPointer = null;
-			dragHandle = null;
-			isDragging = false;
-			
-			if (previewBorder != null)
-			{
-				FloatingLayer?.Children.Remove(previewBorder);
-				previewBorder = null;
-			}
-		}
-	}
-
-	void BeginDragFromTab(PointerPressedEventArgs e, Control origTabBorder)
-	{
-		Control? handle = origTabBorder;
-		if (handle == null)
-		{
-			handle = tabStrip;
-			if (handle == null) handle = titleBar;
-		}
-		if (handle == null) return;
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot != null)
-		{
-			var handlePos = handle.TranslatePoint(new Point(0, 0), visualRoot);
-			var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
-			Debug.WriteLine($"[BeginDragFromTab] {Title}: handle={handle.GetType().Name} handlePos={handlePos?.ToString() ?? "null"} panelPos={panelPos?.ToString() ?? "null"}");
-		}
-		BeginDrag(handle, e);
-	}
-
-	void BeginDragAfterActivate(Point pressPointRoot, IPointer pointer, double clickXInsideTab)
-	{
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		Control? handle = null;
-		if (tabStrip != null)
-		{
-			for (int i = 0; i < tabStrip.Children.Count; i++)
-			{
-				if (tabStrip.Children[i] is Border b && ReferenceEquals(b.Tag, this))
-				{
-					handle = b;
-					break;
-				}
-			}
-		}
-		if (handle == null) handle = titleBar;
-		if (handle == null) return;
-
-		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!panelPosInRoot.HasValue) return;
-
-		// Use titleBar position so the pointer lines up with the title bar when floating
-		var titleBarPosInRoot = titleBar?.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!titleBarPosInRoot.HasValue) return;
-
-// offsetX is distance from panel left to the click point inside the title bar (title bar offset + clickXInsideTab)
-			var titleBarOffsetInPanelX = titleBarPosInRoot.Value.X - panelPosInRoot.Value.X;
-			var offsetX = titleBarOffsetInPanelX + clickXInsideTab;
-			dragOffsetRatioX = this.Bounds.Width > 0 ? offsetX / this.Bounds.Width : 0;
-			dragOffsetAbsoluteY = pressPointRoot.Y - panelPosInRoot.Value.Y;
-			this.pressPointRoot = pressPointRoot;
-			panelPosAtPressRoot = panelPosInRoot.Value;
-
-			Debug.WriteLine($"[BeginDragAfterActivate] {Title}: pressPointRoot={pressPointRoot} panelPosInRoot={panelPosInRoot.Value} titleBarPosInRoot={titleBarPosInRoot.Value} titleBarOffsetInPanelX={titleBarOffsetInPanelX:F1} clickXInsideTab={clickXInsideTab:F1} offsetX={offsetX:F1} dragOffsetRatioX={dragOffsetRatioX:F3} dragOffsetAbsoluteY={dragOffsetAbsoluteY:F1} handle={handle.GetType().Name}");
-		SetupDragState(handle, pointer);
-	}
-
-	void SetupDragState(Control handle, IPointer pointer)
-	{
-		isDragging = true;
-		currentPointer = (Pointer)pointer;
-		dragHandle = handle;
-		pointer.Capture(handle);
-	}
-
-	void BeginFloating(Point posRoot, Visual visualRoot)
-	{
-		if (FloatingLayer == null) return;
-
-		isTransitioningToFloat = true;
-		
-		if (DockGrid != null)
-		{
-			DockGrid.RemovePanel(this);
-		}
-		
-		var panelPosInRoot = this.TranslatePoint(new Point(0, 0), visualRoot);
-		var floatingLayerPosInRoot = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
-		
-		if (panelPosInRoot.HasValue && floatingLayerPosInRoot.HasValue)
-		{
-			var panelPosInFloatingLayer = panelPosInRoot.Value - floatingLayerPosInRoot.Value;
-			Debug.WriteLine($"[BeginFloating] {Title}: panelPosInRoot={panelPosInRoot.Value} floatingLayerPosInRoot={floatingLayerPosInRoot.Value} panelPosInFloatingLayer={panelPosInFloatingLayer}");
-			MoveToFloatingLayer(FloatingLayer, panelPosInFloatingLayer.X, panelPosInFloatingLayer.Y);
-		}
-		else
-		{
-			MoveToFloatingLayer(FloatingLayer, 0, 0);
-		}
-		
-		SetFloating(true);
-		currentPointer?.Capture(dragHandle ?? titleBar);
-		isTransitioningToFloat = false;
-		LayoutChanged?.Invoke(this, EventArgs.Empty);
-	}
-
-	void MoveFloating(Point posRoot)
-	{
-		if (FloatingLayer == null) return;
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var floatingLayerPos = FloatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!floatingLayerPos.HasValue) return;
-
-		var currentDragOffset = new Point(
-			this.Bounds.Width * dragOffsetRatioX,
-			dragOffsetAbsoluteY
-		);
-
-		var posInFloatingLayer = posRoot - floatingLayerPos.Value;
-
-		var panelPos = posInFloatingLayer - currentDragOffset;
-		
-		Canvas.SetLeft(this, panelPos.X);
-		Canvas.SetTop(this, panelPos.Y);
-		LayoutChanged?.Invoke(this, EventArgs.Empty);
-	}
-
-	void UpdateDockPreview(Point posRoot, Visual visualRoot)
-	{
-		if (FloatingLayer == null) return;
-
-		tabDropTarget = FindPanelAt(posRoot, visualRoot);
-		if (tabDropTarget != null)
-		{
-			var targetTopLeft = tabDropTarget.TranslatePoint(new Point(0, 0), visualRoot);
-			var targetPos = tabDropTarget.TranslatePoint(new Point(0, 0), FloatingLayer);
-			if (targetTopLeft.HasValue && targetPos.HasValue)
-			{
-				EnsurePreviewBorder();
-				if (previewBorder == null) return;
-
-				previewBorder.Width = tabDropTarget.Bounds.Width;
-				previewBorder.Height = tabDropTarget.Bounds.Height;
-				Canvas.SetLeft(previewBorder, targetPos.Value.X);
-				Canvas.SetTop(previewBorder, targetPos.Value.Y);
-			}
-			return;
-		}
-
-		var targetDockGrid = FindDockGridAt(posRoot, visualRoot);
-		if (targetDockGrid != null)
-		{
-			var dockTopLeft = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
-			var dockPos = targetDockGrid.TranslatePoint(new Point(0, 0), FloatingLayer);
-			if (dockTopLeft.HasValue && dockPos.HasValue)
-			{
-				var relativePos = posRoot - dockTopLeft.Value;
-				var previewRect = targetDockGrid.GetDockPreviewRect(relativePos);
-				if (previewRect.Width > 0 && previewRect.Height > 0)
-				{
-					EnsurePreviewBorder();
-					if (previewBorder == null) return;
-
-					previewBorder.Width = previewRect.Width;
-					previewBorder.Height = previewRect.Height;
-					double offsetX = 0;
-					double offsetY = 0;
-					if (targetDockGrid.Bounds.Width <= 0 || targetDockGrid.Bounds.Height <= 0)
-					{
-						if (targetDockGrid.DockEdge == DockEdge.Right)
-							offsetX = -previewRect.Width;
-						else if (targetDockGrid.DockEdge == DockEdge.Bottom)
-							offsetY = -previewRect.Height;
-					}
-					Canvas.SetLeft(previewBorder, dockPos.Value.X + previewRect.X + offsetX);
-					Canvas.SetTop(previewBorder, dockPos.Value.Y + previewRect.Y + offsetY);
-				}
-			}
-		}
-		else
-		{
-			if (previewBorder != null)
-			{
-				FloatingLayer.Children.Remove(previewBorder);
-				previewBorder = null;
-			}
-		}
-	}
-
-	DockGrid? FindDockGridAt(Point posRoot, Visual visualRoot)
-	{
-		var dockHosts = visualRoot.GetVisualDescendants().OfType<DockGrid>();
-		foreach (var dh in dockHosts)
-		{
-			var dockTopLeft = dh.TranslatePoint(new Point(0, 0), visualRoot);
-			if (dockTopLeft.HasValue)
-			{
-				var dockRect = new Rect(dockTopLeft.Value, dh.Bounds.Size);
-				if (dockRect.Width <= 0 || dockRect.Height <= 0)
-					dockRect = GetDockHotRect(dh, dockTopLeft.Value, visualRoot);
-				if (dockRect.Contains(posRoot))
-				{
-					return dh;
-				}
-			}
-		}
-		return null;
-	}
-
-	void EnsurePreviewBorder()
-	{
-		if (previewBorder != null || FloatingLayer == null) return;
-		
-		previewBorder = new Border
-		{
-			Background = new SolidColorBrush(Colors.Blue),
-			Opacity = 0.5
-		};
-		previewBorder.SetValue(Panel.ZIndexProperty, 0);
-		FloatingLayer.Children.Add(previewBorder);
-	}
-
-	Rect GetDockHotRect(DockGrid dockHost, Point dockTopLeft, Visual visualRoot)
-	{
-		double scale = 1.0;
-		if (visualRoot is IRenderRoot rr) scale = rr.RenderScaling;
-		double hotSize = 100 * scale;
-		var rootBounds = visualRoot.Bounds;
-		var height = dockHost.Bounds.Height > 0 ? dockHost.Bounds.Height : rootBounds.Height;
-		var width = dockHost.Bounds.Width > 0 ? dockHost.Bounds.Width : rootBounds.Width;
-
-		if (dockHost.DockEdge == DockEdge.Left)
-			return new Rect(dockTopLeft.X, dockTopLeft.Y, hotSize, height);
-		if (dockHost.DockEdge == DockEdge.Right)
-			return new Rect(dockTopLeft.X - hotSize, dockTopLeft.Y, hotSize, height);
-		if (dockHost.DockEdge == DockEdge.Bottom)
-			return new Rect(dockTopLeft.X, dockTopLeft.Y - hotSize, width, hotSize);
-
-		return new Rect(dockTopLeft, dockHost.Bounds.Size);
-	}
-
-	PanelTabGroup? FindPanelAt(Point posRoot, Visual visualRoot)
-	{
-		var panels = visualRoot.GetVisualDescendants().OfType<PanelTabGroup>();
-		foreach (var p in panels)
-		{
-			if (p == this) continue;
-			if (p.IsFloating) continue;
-
-			var tabStripRect = GetTabStripRect(p, visualRoot);
-			if (tabStripRect.HasValue && tabStripRect.Value.Contains(posRoot))
-			{
-				return p;
-			}
-		}
-		return null;
-	}
-
-	Rect? GetTabStripRect(PanelTabGroup panel, Visual visualRoot)
-	{
-		var panelTopLeft = panel.TranslatePoint(new Point(0, 0), visualRoot);
-		if (!panelTopLeft.HasValue) return null;
-
-		double height = 0;
-		if (panel.tabStrip != null && panel.tabStrip.Bounds.Height > 0)
-			height = panel.tabStrip.Bounds.Height;
-		else if (panel.titleBar != null && panel.titleBar.Bounds.Height > 0)
-			height = panel.titleBar.Bounds.Height;
-		else
-			height = 18;
-
-		var width = panel.Bounds.Width;
-		if (width <= 0 || height <= 0) return null;
-
-		return new Rect(panelTopLeft.Value.X, panelTopLeft.Value.Y, width, height);
 	}
 
 	void MoveToFloatingLayer(Canvas layer, double left, double top)
@@ -594,121 +113,170 @@ public partial class PanelTabGroup : UserControl
 		CloseRequested?.Invoke(this, EventArgs.Empty);
 	}
 
-	/// <summary>Handles the close menu item click event by raising the CloseRequested event.</summary>
-	void CloseMenuItemOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+	public void ClosePanel(PanelTabItem item)
 	{
-		CloseRequested?.Invoke(this, EventArgs.Empty);
-	}
-
-	/// <summary>Updates the tab strip UI based on the current tab group, showing individual tabs with close menus if multiple panels exist, or the title bar if single or none.</summary>
-	public void RefreshTabStrip()
-	{
-		if (tabStrip == null || titleBar == null) return;
-
-		tabStrip.Children.Clear();
-
-		if (TabGroup == null || TabGroup.Panels.Count <= 1)
+		if (item.Tag == this)
 		{
-			tabStrip.IsVisible = false;
-			titleBar.IsVisible = true;
-			return;
+			CloseRequested?.Invoke(this, EventArgs.Empty);
 		}
-
-		tabStrip.IsVisible = true;
-		titleBar.IsVisible = false;
-
-		for (int i = 0; i < TabGroup.Panels.Count; i++)
+		else if (item.Tag is PanelTabGroup panel)
 		{
-			var panel = TabGroup.Panels[i];
-			var isActive = i == TabGroup.ActiveIndex;
-
-			var tabBorder = new Border
+			TabGroup?.RemovePanel(panel);
+			// Mark the panel as hidden
+			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
+			
+			if (TabGroup.Panels.Count == 0)
 			{
-				Background = new SolidColorBrush(isActive ? Color.FromRgb(58, 58, 58) : Color.FromRgb(42, 42, 42)),
-				Padding = new Thickness(6, 0, 6, 0),
-				Tag = panel
-			};
-
-			var tabContextMenu = new ContextMenu();
-			var tabCloseMenuItem = new MenuItem { Header = "Close" };
-			tabCloseMenuItem.Click += (s, e) =>
+				// Group is empty, close the entire container
+				CloseRequested?.Invoke(this, EventArgs.Empty);
+			}
+			else
 			{
-				panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
-			};
-			tabContextMenu.Items.Add(tabCloseMenuItem);
-			tabBorder.ContextMenu = tabContextMenu;
-
-			var tabText = new TextBlock
-			{
-				Text = panel.Title,
-				FontSize = 12,
-				VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
-				Foreground = new SolidColorBrush(Colors.White)
-			};
-			tabBorder.Child = tabText;
-
-			tabBorder.PointerPressed += TabOnPointerPressed;
-			tabBorder.PointerMoved += TabOnPointerMoved;
-			tabBorder.PointerReleased += TabOnPointerReleased;
-			tabBorder.PointerCaptureLost += TabOnPointerCaptureLost;
-
-			tabStrip.Children.Add(tabBorder);
-		}
-	}
-
-	/// <summary>Handles pointer pressed on a tab, activating the tab if not active or starting a drag operation if already active.</summary>
-	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
-	{
-		if (sender is Border border && border.Tag is PanelTabGroup panel && TabGroup != null)
-		{
-			var e2 = e.GetCurrentPoint(border);
-			if (e2.Properties.IsLeftButtonPressed)
-			{
-				var wasActive = TabGroup.ActivePanel == panel;
-				if (wasActive)
+				RefreshTabStrip();
+				if (!IsFloating)
 				{
-					var visualRoot = this.GetVisualRoot() as Visual;
-					if (visualRoot != null)
-					{
-						var pressPointRoot = e.GetPosition(visualRoot);
-						var panelPos = this.TranslatePoint(new Point(0,0), visualRoot);
-						Debug.WriteLine($"[TabPress] {panel.Title}: ACTIVE press={pressPointRoot} panelPos={panelPos?.ToString() ?? "null"}");
-					}
-					panel.BeginDragFromTab(e, border);
-				}
-				else
-				{
-					var visualRoot = this.GetVisualRoot() as Visual;
-					if (visualRoot == null) return;
-					var pressPointRoot = e.GetPosition(visualRoot);
-					var pressPointInBorder = e.GetPosition(border);
-					var pointer = e.Pointer;
-
-					TabGroup.SetActive(panel);
 					DockGrid?.RebuildGrid();
-					Dispatcher.UIThread.InvokeAsync(() =>
-					{
-						panel.BeginDragAfterActivate(pressPointRoot, pointer, pressPointInBorder.X);
-					}, DispatcherPriority.Render);
 				}
-				e.Handled = true;
 			}
 		}
 	}
 
-	void TabOnPointerMoved(object? sender, PointerEventArgs e)
+	public void RefreshTabStrip()
 	{
-		ContinueDrag(e);
+		if (tabStrip == null) return;
+
+		tabStrip.Children.Clear();
+
+		if (TabGroup == null || TabGroup.Panels.Count == 0)
+		{
+			if (IsFloating)
+			{
+				var titleItem = new PanelTabItem
+				{
+					Title = this.Title,
+					IsActive = true,
+					IsCloseVisible = true,
+					IsTab = true,
+					ParentGroup = this,
+					Tag = this
+				};
+				titleItem.Loaded += (s, e) => {
+					var border = titleItem.FindControl<Border>("TabBorder");
+					if (border != null) border.Tag = this;
+				};
+				tabStrip.Children.Add(titleItem);
+			}
+			return;
+		}
+
+		bool isSingle = TabGroup.Panels.Count == 1;
+		if (isSingle)
+		{
+			var titleItem = new PanelTabItem
+			{
+				Title = this.Title,
+				IsActive = true,
+				IsCloseVisible = IsFloating,
+				IsTab = false,
+				ParentGroup = this,
+				Tag = this
+			};
+			titleItem.Loaded += (s, e) => {
+				var border = titleItem.FindControl<Border>("TabBorder");
+				if (border != null) border.Tag = this;
+			};
+			tabStrip.Children.Add(titleItem);
+		}
+		else
+		{
+			for (int i = 0; i < TabGroup.Panels.Count; i++)
+			{
+				var panel = TabGroup.Panels[i];
+				var isActive = i == TabGroup.ActiveIndex;
+				var tabItem = new PanelTabItem
+				{
+					Title = panel.Title,
+					IsActive = isActive,
+					IsCloseVisible = IsFloating,
+					IsTab = true,
+					ParentGroup = this,
+					Tag = panel
+				};
+				tabItem.Loaded += (s, e) => {
+					var border = tabItem.FindControl<Border>("TabBorder");
+					if (border != null) border.Tag = panel;
+				};
+				tabStrip.Children.Add(tabItem);
+			}
+		}
 	}
 
-	void TabOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	public void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
-		EndDrag(e);
+		if (sender is Border border)
+		{
+			var e2 = e.GetCurrentPoint(border);
+			if (!e2.Properties.IsLeftButtonPressed) return;
+			if (mainView?.dragManager == null) return;
+			var visualRoot = this.GetVisualRoot() as Visual;
+			if (visualRoot == null) return;
+			var pressPointRoot = e.GetPosition(visualRoot);
+			var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+			if (!panelPos.HasValue) return;
+			var dragOffset = pressPointRoot - panelPos.Value;
+			var offsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
+			if (border.Tag is PanelTabGroup panel && TabGroup != null)
+			{
+				mainView.dragManager.StartPotentialDrag(panel, (Pointer)e.Pointer, pressPointRoot, dragOffset.X, dragOffset.Y, offsetRatioX, border, panel.IsFloating);
+			}
+			else if (border.Tag == this)
+			{
+				mainView.dragManager.StartPotentialDrag(this, (Pointer)e.Pointer, pressPointRoot, dragOffset.X, dragOffset.Y, offsetRatioX, border, IsFloating);
+			}
+			e.Handled = true;
+		}
 	}
 
-	void TabOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	public void TabOnPointerMoved(object? sender, PointerEventArgs e)
 	{
-		DragCaptureLost(e);
+		if (mainView?.dragManager == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+		mainView.dragManager.UpdateDrag(e.GetPosition(visualRoot));
+		e.Handled = true;
 	}
+
+	public void TabOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		if (mainView?.dragManager == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+		bool thresholdExceeded = mainView.dragManager.ThresholdExceeded;
+		mainView.dragManager.EndDrag(e.GetPosition(visualRoot));
+		if (!thresholdExceeded)
+		{
+			if (sender is Border border && border.Tag is PanelTabGroup panel && TabGroup != null)
+			{
+				TabGroup.SetActive(panel);
+				DockGrid?.RebuildGrid();
+			}
+		}
+		e.Handled = true;
+	}
+
+	public void TabOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		mainView?.dragManager?.HandleCaptureLost((Pointer)e.Pointer);
+	}
+
+	public void SetMainView(MainView view)
+	{
+		mainView = view;
+	}
+
+	public void RaiseLayoutChanged()
+	{
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
+	}
+
 }

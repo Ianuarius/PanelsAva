@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using System;
+using PanelsAva.Services;
 
 namespace PanelsAva.Views;
 
@@ -15,14 +16,7 @@ public class FileTabItem : Border
 	readonly TextBlock titleText;
 	readonly Button closeButton;
 	bool isActive;
-	bool isDragging;
 	bool isFloating;
-	Point pressPointRoot;
-	Point tabPosAtPressRoot;
-	double dragOffsetX;
-	double dragOffsetY;
-	Pointer? currentPointer;
-	bool movedWhileDocked;
 
 	public FileTabItem(MainView owner, Document document)
 	{
@@ -69,11 +63,6 @@ public class FileTabItem : Border
 		closeButton.Click += CloseButtonOnClick;
 		closeButton.PointerPressed += CloseButtonOnPointerPressed;
 
-		PointerPressed += TabOnPointerPressed;
-		PointerMoved += TabOnPointerMoved;
-		PointerReleased += TabOnPointerReleased;
-		PointerCaptureLost += TabOnPointerCaptureLost;
-
 		var contextMenu = new ContextMenu();
 		var closeMenuItem = new MenuItem { Header = "Close" };
 		closeMenuItem.Click += CloseMenuItemOnClick;
@@ -107,99 +96,5 @@ public class FileTabItem : Border
 	void CloseMenuItemOnClick(object? sender, EventArgs e)
 	{
 		owner.CloseDocument(document);
-	}
-
-	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
-	{
-		var e2 = e.GetCurrentPoint(this);
-		if (!e2.Properties.IsLeftButtonPressed) return;
-
-		owner.SelectDocument(document, true);
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		pressPointRoot = e.GetPosition(visualRoot);
-		var tabPos = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (tabPos.HasValue)
-		{
-			tabPosAtPressRoot = tabPos.Value;
-			dragOffsetX = pressPointRoot.X - tabPosAtPressRoot.X;
-			dragOffsetY = pressPointRoot.Y - tabPosAtPressRoot.Y;
-		}
-
-		isDragging = true;
-		movedWhileDocked = false;
-		currentPointer = (Pointer)e.Pointer;
-		e.Pointer.Capture(this);
-		e.Handled = true;
-	}
-
-	void TabOnPointerMoved(object? sender, PointerEventArgs e)
-	{
-		if (!isDragging) return;
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var posRoot = e.GetPosition(visualRoot);
-		var delta = posRoot - pressPointRoot;
-		double scale = 1.0;
-		var threshold = 10 * scale;
-		if (!isFloating)
-		{
-			if (delta.X * delta.X + delta.Y * delta.Y >= threshold * threshold)
-			{
-				owner.BeginFloatingTab(this, posRoot, e.Pointer, dragOffsetX, dragOffsetY);
-				isFloating = true;
-				owner.MoveFloatingTab(this, posRoot, dragOffsetX, dragOffsetY);
-			}
-			else
-			{
-				if (Math.Abs(delta.X) > threshold)
-					movedWhileDocked = true;
-			}
-		}
-		else
-		{
-			owner.MoveFloatingTab(this, posRoot, dragOffsetX, dragOffsetY);
-		}
-
-		owner.UpdateDockPreview(posRoot);
-
-		e.Handled = true;
-	}
-
-	void TabOnPointerReleased(object? sender, PointerReleasedEventArgs e)
-	{
-		if (!isDragging) return;
-
-		isDragging = false;
-		currentPointer?.Capture(null);
-		currentPointer = null;
-		e.Pointer.Capture(null);
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var posRoot = e.GetPosition(visualRoot);
-		if (isFloating)
-		{
-			owner.TryDockFloatingTab(this, posRoot);
-		}
-		else if (movedWhileDocked)
-		{
-			owner.ReorderDockedTab(this, posRoot);
-		}
-		owner.ClearDockPreview();
-
-		e.Handled = true;
-	}
-
-	void TabOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-	{
-		isDragging = false;
-		currentPointer = null;
-		owner.ClearDockPreview();
 	}
 }

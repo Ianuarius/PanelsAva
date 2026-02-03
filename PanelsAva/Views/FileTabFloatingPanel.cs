@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.VisualTree;
 using Avalonia;
 using System;
+using PanelsAva.Services;
 
 namespace PanelsAva.Views;
 
@@ -16,11 +17,7 @@ public class FileTabFloatingPanel : Border
 	readonly TextBlock titleText;
 	readonly Button closeButton;
 	readonly Image image;
-	bool isDragging;
 	bool isActive;
-	double dragOffsetX;
-	double dragOffsetY;
-	Pointer? currentPointer;
 
 	public FileTabFloatingPanel(MainView owner, Document document)
 	{
@@ -90,11 +87,6 @@ public class FileTabFloatingPanel : Border
 		closeButton.Click += CloseButtonOnClick;
 		closeButton.PointerPressed += CloseButtonOnPointerPressed;
 
-		titleBar.PointerPressed += TitleBarOnPointerPressed;
-		titleBar.PointerMoved += TitleBarOnPointerMoved;
-		titleBar.PointerReleased += TitleBarOnPointerReleased;
-		titleBar.PointerCaptureLost += TitleBarOnPointerCaptureLost;
-
 		var contextMenu = new ContextMenu();
 		var closeMenuItem = new MenuItem { Header = "Close" };
 		closeMenuItem.Click += CloseMenuItemOnClick;
@@ -118,16 +110,6 @@ public class FileTabFloatingPanel : Border
 		titleBar.Background = new SolidColorBrush(isActive ? Color.FromRgb(70, 70, 100) : Color.FromRgb(50, 50, 70));
 	}
 
-	public void BeginExternalDrag(IPointer pointer, Point posRoot, double offsetX, double offsetY)
-	{
-		dragOffsetX = offsetX;
-		dragOffsetY = offsetY;
-		isDragging = true;
-		currentPointer = (Pointer)pointer;
-		pointer.Capture(titleBar);
-		owner.MoveFloatingPanel(this, posRoot, dragOffsetX, dragOffsetY);
-	}
-
 	void CloseButtonOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		e.Handled = true;
@@ -140,64 +122,6 @@ public class FileTabFloatingPanel : Border
 
 	void CloseMenuItemOnClick(object? sender, EventArgs e)
 	{
-		owner.CloseDocument(document);
-	}
-
-	void TitleBarOnPointerPressed(object? sender, PointerPressedEventArgs e)
-	{
-		var e2 = e.GetCurrentPoint(titleBar);
-		if (!e2.Properties.IsLeftButtonPressed) return;
-
-		owner.SelectDocument(document, false);
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-
-		var pressPointRoot = e.GetPosition(visualRoot);
-		var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
-		if (panelPos.HasValue)
-		{
-			dragOffsetX = pressPointRoot.X - panelPos.Value.X;
-			dragOffsetY = pressPointRoot.Y - panelPos.Value.Y;
-		}
-
-		isDragging = true;
-		currentPointer = (Pointer)e.Pointer;
-		e.Pointer.Capture(titleBar);
-		e.Handled = true;
-	}
-
-	void TitleBarOnPointerMoved(object? sender, PointerEventArgs e)
-	{
-		if (!isDragging) return;
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-		var posRoot = e.GetPosition(visualRoot);
-		owner.MoveFloatingPanel(this, posRoot, dragOffsetX, dragOffsetY);
-		owner.UpdateDockPreview(posRoot);
-		e.Handled = true;
-	}
-
-	void TitleBarOnPointerReleased(object? sender, PointerReleasedEventArgs e)
-	{
-		if (!isDragging) return;
-		isDragging = false;
-		currentPointer?.Capture(null);
-		currentPointer = null;
-		e.Pointer.Capture(null);
-
-		var visualRoot = this.GetVisualRoot() as Visual;
-		if (visualRoot == null) return;
-		var posRoot = e.GetPosition(visualRoot);
-		owner.TryDockFloatingPanel(this, posRoot);
-		owner.ClearDockPreview();
-		e.Handled = true;
-	}
-
-	void TitleBarOnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-	{
-		isDragging = false;
-		currentPointer = null;
-		owner.ClearDockPreview();
+		owner.CloseDocument(document);  
 	}
 }

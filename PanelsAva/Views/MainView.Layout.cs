@@ -884,7 +884,7 @@ public partial class MainView
 		return panel.Parent != null || panel.TabGroup != null;
 	}
 
-	void HidePanel(PanelTabGroup? panel)
+	public void HidePanel(PanelTabGroup? panel)
 	{
 		if (panel == null) return;
 		SyncLayoutConfig(false, false);
@@ -934,6 +934,21 @@ public partial class MainView
 	{
 		if (sender is PanelTabGroup panel)
 		{
+			// If this panel is part of a TabGroup, just mark it as hidden
+			// The UI update is handled by the TabGroup management
+			if (panel.TabGroup != null)
+			{
+				var state = GetPanelState(panel.Title);
+				if (state != null)
+				{
+					state.IsHidden = true;
+					preserveLayoutOnSave = true;
+				}
+				SyncLayoutConfig(true, true);
+				return;
+			}
+			
+			// Otherwise, use the normal hide logic
 			HidePanel(panel);
 		}
 	}

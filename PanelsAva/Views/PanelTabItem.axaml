@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PanelsAva.Views.PanelTabItem">
+    <Border x:Name="TabBorder" Padding="6,0,6,0">
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{Binding Title}"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Left"
+                       Foreground="#FFFFFF" />
+            <Button x:Name="CloseButton" Content="✖" FontSize="10" Width="20" Height="20" Margin="4,0,-8,0" Padding="0,3,0,0" Grid.Column="1" IsVisible="False"
+                    Background="Transparent" Foreground="#FFFFFF" BorderThickness="0">
+                <Button.Styles>
+                    <Style Selector="Button:pointerover">
+                        <Setter Property="Background" Value="#444444" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="BorderBrush" Value="#666666" />
+                    </Style>
+                </Button.Styles>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

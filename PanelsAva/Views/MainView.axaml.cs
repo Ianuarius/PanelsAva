@@ -1,15 +1,13 @@
-using Avalonia.Controls;
-using Avalonia.VisualTree;
-using System;
-using PanelsAva.ViewModels;
-using Avalonia.Media;
-using Avalonia.Layout;
-using System.Collections.Specialized;
-using System.Collections.Generic;
-using PanelsAva;
 using Avalonia;
-using PanelsAva.Models;
+using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using PanelsAva.Models;
+using PanelsAva.Services;
+using PanelsAva.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 
 namespace PanelsAva.Views;
 
@@ -64,8 +62,11 @@ public partial class MainView : UserControl
 	bool isWorkspaceLocked;
 	bool preserveLayoutOnSave;
 	Dictionary<string, PanelState> panelStateCache = new();
+	public DragManager? dragManager;
 
 	public event EventHandler? PanelVisibilityChanged;
+
+	public bool IsDragging => dragManager?.IsDragging ?? false;
 
 	public MainView()
 	{
@@ -248,9 +249,16 @@ public partial class MainView : UserControl
 		fileTabStrip = this.FindControl<StackPanel>("FileTabStrip");
 		canvasImage = this.FindControl<Image>("CanvasImage");
 		floatingLayer = FindFloatingLayer();
+		if (floatingLayer != null)
+		{
+			var visualRoot = this.GetVisualRoot() as Visual;
+			if (visualRoot != null)
+				dragManager = new DragManager(visualRoot, floatingLayer);
+		}
 		if (toolbar != null)
 		{
 			toolbar.FloatingLayer = floatingLayer;
+			toolbar.SetMainView(this);
 			toolbar.PositionChanged += OnToolbarPositionChanged;
 			UpdateToolbarPosition(toolbar.Position);
 		}
@@ -274,6 +282,7 @@ public partial class MainView : UserControl
 				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			layersPanel.SetMainView(this);
 			layersPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(layersPanel);
 
@@ -284,6 +293,7 @@ public partial class MainView : UserControl
 				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			propertiesPanel.SetMainView(this);
 			propertiesPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(propertiesPanel);
 
@@ -294,6 +304,7 @@ public partial class MainView : UserControl
 				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			colorPanel.SetMainView(this);
 			colorPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(colorPanel);
 
@@ -304,6 +315,7 @@ public partial class MainView : UserControl
 				DockGrid = leftDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			brushesPanel.SetMainView(this);
 			brushesPanel.CloseRequested += OnPanelCloseRequested;
 			leftDockGrid.AddPanel(brushesPanel);
 		}
@@ -317,6 +329,7 @@ public partial class MainView : UserControl
 				DockGrid = rightDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			historyPanel.SetMainView(this);
 			historyPanel.CloseRequested += OnPanelCloseRequested;
 			rightDockGrid.AddPanel(historyPanel);
 		}
@@ -330,6 +343,7 @@ public partial class MainView : UserControl
 				DockGrid = bottomDockGrid,
 				FloatingLayer = floatingLayer
 			};
+			timelinePanel.SetMainView(this);
 			timelinePanel.CloseRequested += OnPanelCloseRequested;
 			bottomDockGrid.AddPanel(timelinePanel);
 		}

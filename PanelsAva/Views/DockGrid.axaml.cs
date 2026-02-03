@@ -161,7 +161,10 @@ public partial class DockGrid : UserControl
 			{
 				tg.RemovePanel(panel);
 				if (tg.Panels.Count == 0)
+				{
 					dockedItems.RemoveAt(i);
+					panel.TabGroup = null;
+				}
 				break;
 			}
 		}
