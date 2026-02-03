@@ -20,6 +20,7 @@ public class WorkspaceProfiles
 	public Dictionary<string, LayoutConfig> Profiles { get; set; } = new();
 }
 
+/// <summary>Represents the layout configuration for a dock grid, including the dock edge (Left/Right/Bottom), the list of docked tab groups with their panel titles and active indices, and the proportional sizes (0-1) of each group summing to 1.</summary>
 public class DockGridLayout
 {
 	public string DockEdge { get; set; } = string.Empty;

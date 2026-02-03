@@ -102,6 +102,8 @@ public partial class PanelTabGroup : UserControl
 		set => SetValue(CanFloatProperty, value);
 	}
 
+	/// <summary>Sets the floating state of the panel, updating UI elements like tab group, close button visibility, and title bar context menu accordingly.</summary>
+	/// <param name="floating">True to make the panel floating, false to dock it.</param>
 	public void SetFloating(bool floating)
 	{
 		IsFloating = floating;
@@ -194,6 +196,7 @@ public partial class PanelTabGroup : UserControl
 		e.Handled = true;
 	}
 
+	/// <summary>Continues the drag operation, initiating floating if movement exceeds threshold, or updating floating position and dock preview.</summary>
 	void ContinueDrag(PointerEventArgs e)
 	{
 		if (!isDragging) return;
@@ -225,6 +228,7 @@ public partial class PanelTabGroup : UserControl
 		e.Handled = true;
 	}
 
+	/// <summary>Finalizes the drag operation, docking the panel if floating based on drop location, and cleaning up drag state.</summary>
 	void EndDrag(PointerReleasedEventArgs e)
 	{
 		if (!isDragging) return;
@@ -276,6 +280,7 @@ public partial class PanelTabGroup : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Handles pointer capture loss during drag, resetting drag state and cleaning up preview elements if not transitioning to floating.</summary>
 	void DragCaptureLost(PointerCaptureLostEventArgs e)
 	{
 		if (!isTransitioningToFloat)
@@ -583,16 +588,19 @@ public partial class PanelTabGroup : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Handles the close button click event by raising the CloseRequested event.</summary>
 	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
 	{
 		CloseRequested?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Handles the close menu item click event by raising the CloseRequested event.</summary>
 	void CloseMenuItemOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
 	{
 		CloseRequested?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Updates the tab strip UI based on the current tab group, showing individual tabs with close menus if multiple panels exist, or the title bar if single or none.</summary>
 	public void RefreshTabStrip()
 	{
 		if (tabStrip == null || titleBar == null) return;
@@ -649,6 +657,7 @@ public partial class PanelTabGroup : UserControl
 		}
 	}
 
+	/// <summary>Handles pointer pressed on a tab, activating the tab if not active or starting a drag operation if already active.</summary>
 	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (sender is Border border && border.Tag is PanelTabGroup panel && TabGroup != null)

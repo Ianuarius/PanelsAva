@@ -80,6 +80,11 @@ public partial class DockGrid : UserControl
 		panelsGrid = this.FindControl<Grid>("PanelsGrid");
 	}
 
+	/// <summary>
+	/// Captures the current docking layout by creating a DockGridLayout object that includes the dock edge,
+	/// the list of docked tab groups with their active panels and panel titles, and the proportional sizes of each group.
+	/// </summary>
+	/// <returns>A DockGridLayout representing the current state of the dock grid.</returns>
 	public DockGridLayout GetLayout()
 	{
 		var layout = new DockGridLayout
@@ -103,6 +108,9 @@ public partial class DockGrid : UserControl
 		return layout;
 	}
 
+	/// <summary>Applies a saved DockGridLayout to restore the dock grid state, reconstructing tab groups and panels using the provided resolvePanel function.</summary>
+	/// <param name="layout">The layout configuration to apply.</param>
+	/// <param name="resolvePanel">A function that takes a panel title string and returns the corresponding PanelTabGroup instance.</param>
 	public void ApplyLayout(DockGridLayout? layout, Func<string, PanelTabGroup?> resolvePanel)
 	{
 		dockedItems.Clear();
@@ -282,6 +290,7 @@ public partial class DockGrid : UserControl
 		return rects;
 	}
 
+	/// <summary>Rebuilds the visual grid layout by clearing and reconstructing the panels grid with docked items, splitters, and updating the UI.</summary>
 	public void RebuildGrid()
 	{
 		if (panelsGrid == null) return;
@@ -330,10 +339,12 @@ public partial class DockGrid : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Adds a grid splitter to the panels grid for resizing docked panels.</summary>
 	void AddSplitter()
 	{
 		if (panelsGrid == null) return;
 
+		double thickness = 4;
 		var splitter = new GridSplitter
 		{
 			Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(100, 100, 100)),
@@ -342,14 +353,14 @@ public partial class DockGrid : UserControl
 
 		if (IsHorizontal)
 		{
-			panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(4, GridUnitType.Pixel));
-			splitter.Width = 4;
+			panelsGrid.ColumnDefinitions.Add(new ColumnDefinition(thickness, GridUnitType.Pixel));
+			splitter.Width = thickness;
 			Grid.SetColumn(splitter, panelsGrid.ColumnDefinitions.Count - 1);
 		}
 		else
 		{
-			panelsGrid.RowDefinitions.Add(new RowDefinition(4, GridUnitType.Pixel));
-			splitter.Height = 4;
+			panelsGrid.RowDefinitions.Add(new RowDefinition(thickness, GridUnitType.Pixel));
+			splitter.Height = thickness;
 			Grid.SetRow(splitter, panelsGrid.RowDefinitions.Count - 1);
 		}
 
@@ -358,6 +369,8 @@ public partial class DockGrid : UserControl
 		panelsGrid.Children.Add(splitter);
 	}
 
+	/// <summary>Adds a new column or row definition to the grid and places the panel in it, depending on the horizontal orientation.</summary>
+	/// <param name="panel">The panel to add to the grid.</param>
 	void AddPanelRowOrColumn(PanelTabGroup panel)
 	{
 		if (panelsGrid == null) return;
@@ -379,6 +392,8 @@ public partial class DockGrid : UserControl
 		panelsGrid.Children.Add(panel);
 	}
 
+	/// <summary>Calculates the proportional sizes of docked items based on their current dimensions, returning a list of doubles where each value is the fraction (0-1) of total space each item occupies.</summary>
+	/// <returns>A list of doubles summing to 1, each representing the proportional size of a docked item.</returns>
 	List<double> GetItemSizes()
 	{
 		var sizes = new List<double>();
@@ -414,6 +429,8 @@ public partial class DockGrid : UserControl
 		return tg;
 	}
 
+	/// <summary>Applies the proportional sizes from the layout to the grid column or row definitions.</summary>
+	/// <param name="layout">The layout containing the item sizes to apply.</param>
 	void ApplyItemSizes(DockGridLayout? layout)
 	{
 		if (layout == null || panelsGrid == null) return;
@@ -454,6 +471,8 @@ public partial class DockGrid : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Resets the panel's floating properties to prepare it for docked state.</summary>
+	/// <param name="panel">The panel to clear floating properties from.</param>
 	void ClearFloatingProperties(PanelTabGroup panel)
 	{
 		Canvas.SetLeft(panel, double.NaN);
