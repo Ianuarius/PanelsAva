@@ -3,9 +3,7 @@ PanelsAva
 
 Dockable Photoshop-style panels (palettes) for Avalonia applications.
 
-[<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/87c23468-0a55-4faa-b164-f1372e4833bc" />](https://www.youtube.com/watch?v=wjAVSGwB_X8)
-
-
+[<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/6f46ae20-aad9-4622-b522-e403c583d6dc" />](https://www.youtube.com/watch?v=wjAVSGwB_X8)
 
 Features
 --------
