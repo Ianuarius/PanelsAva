@@ -22,6 +22,7 @@ public class DragManager
 {
 	readonly Visual visualRoot;
 	readonly Canvas floatingLayer;
+	readonly MainView? mainView;
 	bool isDragging;
 	bool thresholdExceeded;
 	object? dragSource;
@@ -34,10 +35,11 @@ public class DragManager
 	bool wasFloating;
 	Border? previewBorder;
 
-	public DragManager(Visual visualRoot, Canvas floatingLayer)
+	public DragManager(Visual visualRoot, Canvas floatingLayer, MainView? mainView = null)
 	{
 		this.visualRoot = visualRoot;
 		this.floatingLayer = floatingLayer;
+		this.mainView = mainView;
 	}
 
 	public bool IsDragging => isDragging;
@@ -68,6 +70,20 @@ public class DragManager
 		var threshold = 10 * scale;
 		if (delta.X * delta.X + delta.Y * delta.Y < threshold * threshold) return;
 		thresholdExceeded = true;
+
+		if (dragSource is FileTabItem fileTab)
+		{
+			if (mainView != null && !fileTab.IsFloating)
+			{
+				mainView.BeginFloatingTab(fileTab, posRoot, currentPointer, dragOffsetX, dragOffsetY);
+			}
+			if (mainView != null)
+			{
+				mainView.MoveFloatingTab(fileTab, posRoot, dragOffsetX, dragOffsetY);
+				mainView.UpdateDockPreview(posRoot);
+			}
+			return;
+		}
 
 		if (dragSource is PanelTabGroup panel)
 		{
@@ -151,6 +167,11 @@ public class DragManager
 				}
 				panel.RaiseLayoutChanged();
 			}
+			else if (dragSource is FileTabItem fileTab)
+			{
+				if (thresholdExceeded && mainView != null)
+					mainView.TryDockFloatingTab(fileTab, posRoot);
+			}
 		}
 		finally
 		{
@@ -172,19 +193,14 @@ public class DragManager
 	{
 		if (!isDragging) return;
 		if (pointer == null) return;
-		// Only attempt recovery for the current pointer
 		if (currentPointer == null || pointer != currentPointer) return;
 
-		// Try to re-capture to the previously requested control
 		if (captureControl != null)
 		{
 			currentPointer?.Capture(captureControl);
-			// If successful, keep captureControl as-is. There's no explicit success flag,
-			// but Capture will set pointer capture in the platform if possible.
 			return;
 		}
 
-		// If we don't have a captureControl, try to capture the drag source if it's a Control
 		if (dragSource is Control ctrl)
 		{
 			currentPointer?.Capture(ctrl);
@@ -192,7 +208,6 @@ public class DragManager
 			return;
 		}
 
-		// As a last resort, try capturing to the floating layer or visual root if possible
 		if (floatingLayer is Control floatingCtrl)
 		{
 			currentPointer?.Capture(floatingCtrl);

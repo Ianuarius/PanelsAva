@@ -253,7 +253,21 @@ public partial class MainView : UserControl
 		{
 			var visualRoot = this.GetVisualRoot() as Visual;
 			if (visualRoot != null)
-				dragManager = new DragManager(visualRoot, floatingLayer);
+				dragManager = new DragManager(visualRoot, floatingLayer, this);
+			floatingLayer.PointerMoved += (s, e) =>
+			{
+				if (dragManager == null || !dragManager.IsDragging) return;
+				var root = this.GetVisualRoot() as Visual;
+				if (root == null) return;
+				dragManager.UpdateDrag(e.GetPosition(root));
+			};
+			floatingLayer.PointerReleased += (s, e) =>
+			{
+				if (dragManager == null || !dragManager.IsDragging) return;
+				var root = this.GetVisualRoot() as Visual;
+				if (root == null) return;
+				dragManager.EndDrag(e.GetPosition(root));
+			};
 		}
 		if (toolbar != null)
 		{

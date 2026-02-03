@@ -95,6 +95,11 @@ public partial class MainView
 		}
 	}
 
+	public void SelectDocument(Document doc)
+	{
+		SelectDocument(doc, true);
+	}
+
 	public void CloseDocument(Document doc)
 	{
 		if (currentViewModel == null) return;
@@ -125,9 +130,14 @@ public partial class MainView
 		if (!floatingLayer.Children.Contains(panel))
 			floatingLayer.Children.Add(panel);
 		panel.UpdateFromDocument();
+		tab.SetFloating(true);
 
 		if (pointer != null)
 		{
+			if (floatingLayer != null)
+				pointer.Capture(floatingLayer);
+			else
+				pointer.Capture(null);
 		}
 
 		if (currentViewModel != null && currentViewModel.CurrentDocument == tab.Document)
@@ -181,7 +191,7 @@ public partial class MainView
 			if (index < 0 || index > fileTabStrip.Children.Count)
 				index = fileTabStrip.Children.Count;
 			fileTabStrip.Children.Insert(index, tab);
-			ReorderDocument(panel.Document, index);
+			ReorderDocumentByDockedIndex(panel.Document, index);
 		}
 		tab.SetFloating(false);
 		ClearDockPreview();
@@ -193,7 +203,7 @@ public partial class MainView
 	{
 		if (fileTabStrip == null) return;
 		var index = GetInsertIndex(posRoot, true);
-		ReorderDocument(tab.Document, index);
+		ReorderDocumentByDockedIndex(tab.Document, index);
 		ClearDockPreview();
 	}
 
@@ -244,17 +254,34 @@ public partial class MainView
 			fileTabStrip.Children.Remove(fileTabPreview);
 	}
 
-	void ReorderDocument(Document doc, int newIndex)
+	void ReorderDocumentByDockedIndex(Document doc, int dockedIndex)
 	{
 		if (currentViewModel == null) return;
 		var oldIndex = currentViewModel.OpenDocuments.IndexOf(doc);
 		if (oldIndex < 0) return;
-		if (newIndex < 0) newIndex = 0;
-		if (newIndex >= currentViewModel.OpenDocuments.Count)
-			newIndex = currentViewModel.OpenDocuments.Count - 1;
-		if (newIndex == oldIndex) return;
-		currentViewModel.OpenDocuments.Move(oldIndex, newIndex);
-		currentViewModel.CurrentDocumentIndex = newIndex;
+		var targetIndex = GetOpenIndexForDockedInsert(doc, dockedIndex);
+		if (targetIndex > oldIndex) targetIndex--;
+		if (targetIndex < 0) targetIndex = 0;
+		if (targetIndex >= currentViewModel.OpenDocuments.Count)
+			targetIndex = currentViewModel.OpenDocuments.Count - 1;
+		if (targetIndex == oldIndex) return;
+		currentViewModel.OpenDocuments.Move(oldIndex, targetIndex);
+		currentViewModel.CurrentDocumentIndex = targetIndex;
+	}
+
+	int GetOpenIndexForDockedInsert(Document doc, int dockedIndex)
+	{
+		if (currentViewModel == null) return dockedIndex;
+		int dockedCount = 0;
+		for (int i = 0; i < currentViewModel.OpenDocuments.Count; i++)
+		{
+			var d = currentViewModel.OpenDocuments[i];
+			if (d == doc) continue;
+			if (floatingDocuments.Contains(d)) continue;
+			if (dockedCount == dockedIndex) return i;
+			dockedCount++;
+		}
+		return currentViewModel.OpenDocuments.Count;
 	}
 
 	int GetFirstDockedDocumentIndex()

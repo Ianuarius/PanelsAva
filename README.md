@@ -1,7 +1,7 @@
 PanelsAva
 =======
 
-Dockable Photoshop-style panels (palettes) for Avalonia applications.
+Dockable Photoshop-style panels (palettes) for Avalonia applications, designed for digital art creation with a layered canvas architecture.
 
 [<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/6f46ae20-aad9-4622-b522-e403c583d6dc" />](https://www.youtube.com/watch?v=wjAVSGwB_X8)
 
@@ -9,7 +9,7 @@ Features
 --------
 - Dockable, floatable, resizeable panels and hosts similar to Photoshop palettes.
 - File tabs that can be dragged out to float like panels, with a Canvas control displayed in floating windows.
-- Simple MVVM-friendly structure: Views + ViewModels provided.
+- Simple MVVM-friendly structure: Views, ViewModels, Models, and Services provided.
 - Dynamic canvas expansion when dock hosts are empty, with hot zones for re-docking panels.
 - Persistent panel layouts: positions, orders, sizes, and floating states are automatically saved and restored across application sessions.
 - Hidden panels can be reopened from the Window menu and will appear in their last known location, size (relative, more or less), and state.
@@ -37,14 +37,17 @@ What’s in this repository
 -------------------------
 - `PanelsAva/Views` — XAML views for each panel and host components (e.g. DockGrid.axaml, PanelTabGroup.axaml, MainWindow.axaml).
 - `PanelsAva/ViewModels` — ViewModel implementations used by the sample panels.
+- `PanelsAva/Models` — Model classes representing documents and layout configurations.
+- `PanelsAva/Services` — Service classes for managing drag operations and other application services.
 - `PanelsAva.Desktop` — Desktop entry project that launches the example app.
 
 How to use these panels in your project
 ---------------------------------------
 1. Copy the visual components you want from `PanelsAva/Views` into your project (for example, `DockGrid.axaml` and `PanelTabGroup.axaml`).
 2. Copy the corresponding ViewModels (or adapt them) from `PanelsAva/ViewModels` to your app. Ensure any base classes like `ViewModelBase.cs` are included or mapped to your MVVM framework.
-3. Add DataTemplates or a ViewLocator so your ViewModels are associated with the Views in XAML.
-4. Place the `DockGrid` control in your main window where you want the dockable area to appear. Create instances of `PanelTabGroup` (or your derived panel types) and set their DataContext to the appropriate ViewModel instances.
+3. Copy the necessary Models from `PanelsAva/Models` (e.g., `Document.cs`, `LayoutConfig.cs`) and Services from `PanelsAva/Services` (e.g., `DragManager.cs`) to support the functionality.
+4. Add DataTemplates or a ViewLocator so your ViewModels are associated with the Views in XAML.
+5. Place the `DockGrid` control in your main window where you want the dockable area to appear. Create instances of `PanelTabGroup` (or your derived panel types) and set their DataContext to the appropriate ViewModel instances.
 
 Example (conceptual)
 --------------------
@@ -66,8 +69,9 @@ Where to look in this repo
 
 TODO
 ----
+- Regression in reorganizing file tabs: dropped tab always goes to the end. Need to investigate.
+- Closing and reopening panels in TabStrips seems a bit fragile and might sometimes break the panel open state. Need to investigate.
 - Reorganize panels in tabstrip by dragging them to a specific location.
-- Closing and reopening panels in TabStrips seems a bit fragile and might sometimes break the panel open state. Need to investigate properly at some point.
 
 License
 -------

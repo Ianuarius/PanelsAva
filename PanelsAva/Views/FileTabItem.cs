@@ -63,6 +63,10 @@ public class FileTabItem : Border
 		closeButton.Click += CloseButtonOnClick;
 		closeButton.PointerPressed += CloseButtonOnPointerPressed;
 
+		PointerPressed += TabOnPointerPressed;
+		PointerMoved += TabOnPointerMoved;
+		PointerReleased += TabOnPointerReleased;
+
 		var contextMenu = new ContextMenu();
 		var closeMenuItem = new MenuItem { Header = "Close" };
 		closeMenuItem.Click += CloseMenuItemOnClick;
@@ -71,6 +75,8 @@ public class FileTabItem : Border
 	}
 
 	public Document Document => document;
+
+	public bool IsFloating => isFloating;
 
 	public void SetActive(bool active)
 	{
@@ -85,6 +91,54 @@ public class FileTabItem : Border
 
 	void CloseButtonOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
+		e.Handled = true;
+	}
+
+	void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (closeButton.IsPointerOver) return;
+		var e2 = e.GetCurrentPoint(this);
+		if (!e2.Properties.IsLeftButtonPressed) return;
+		if (owner.dragManager == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+		var pressPointRoot = e.GetPosition(visualRoot);
+		var tabPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+		if (!tabPos.HasValue) return;
+		var dragOffset = pressPointRoot - tabPos.Value;
+		var offsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;
+		owner.dragManager.StartPotentialDrag(this, (Pointer)e.Pointer, pressPointRoot, dragOffset.X, dragOffset.Y, offsetRatioX, this, isFloating);
+		e.Handled = true;
+	}
+
+	void TabOnPointerMoved(object? sender, PointerEventArgs e)
+	{
+		if (isFloating) return;
+		if (owner.dragManager == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+		var posRoot = e.GetPosition(visualRoot);
+		owner.dragManager.UpdateDrag(posRoot);
+		e.Handled = true;
+	}
+
+	void TabOnPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		if (isFloating) return;
+		if (owner.dragManager == null) return;
+		var visualRoot = this.GetVisualRoot() as Visual;
+		if (visualRoot == null) return;
+		bool thresholdExceeded = owner.dragManager.ThresholdExceeded;
+		var posRoot = e.GetPosition(visualRoot);
+		owner.dragManager.EndDrag(posRoot);
+		if (!thresholdExceeded)
+		{
+			owner.SelectDocument(document);
+		}
+		else
+		{
+			owner.TryDockFloatingTab(this, posRoot);
+		}
 		e.Handled = true;
 	}
 
