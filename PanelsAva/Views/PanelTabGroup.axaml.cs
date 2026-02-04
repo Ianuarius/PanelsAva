@@ -23,13 +23,6 @@ public partial class PanelTabGroup : UserControl
 	StackPanel? tabStrip;
 	MainView? mainView;
 
-	public PanelTabGroup()
-	{
-		InitializeComponent();
-		DataContext = this;
-		tabStrip = this.FindControl<StackPanel>("TabStrip");
-	}
-
 	public string Title
 	{
 		get => GetValue(TitleProperty);
@@ -66,8 +59,16 @@ public partial class PanelTabGroup : UserControl
 		set => SetValue(CanFloatProperty, value);
 	}
 
-	/// <summary>Sets the floating state of the panel, updating UI elements like tab group, close button visibility, and title bar context menu accordingly.</summary>
-	/// <param name="floating">True to make the panel floating, false to dock it.</param>
+	/// <summary>Initializes a new PanelTabGroup, setting up the component, data context, and locating the tab strip control.</summary>
+	public PanelTabGroup()
+	{
+		InitializeComponent();
+		DataContext = this;
+		tabStrip = this.FindControl<StackPanel>("TabStrip");
+	}
+
+	/// <summary>Sets whether this panel tab group is floating or docked, updates the tab strip display, and notifies listeners of the layout change.</summary>
+	/// <param name="floating">True to make the panel float freely on the screen; false to dock it in the grid layout.</param>
 	public void SetFloating(bool floating)
 	{
 		IsFloating = floating;
@@ -107,7 +108,6 @@ public partial class PanelTabGroup : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	/// <summary>Handles the close button click event by raising the CloseRequested event.</summary>
 	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
 	{
 		CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -141,6 +141,7 @@ public partial class PanelTabGroup : UserControl
 		}
 	}
 
+	/// <summary>Rebuilds the tab strip UI to match the current panel state: shows a single title bar for one panel, individual clickable tabs for multiple panels, and adds close buttons only when floating. Clears and repopulates the tab strip controls accordingly.</summary>
 	public void RefreshTabStrip()
 	{
 		if (tabStrip == null) return;
