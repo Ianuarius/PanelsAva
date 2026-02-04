@@ -124,6 +124,9 @@ public class DragManager
 					Canvas.SetLeft(panel, 0);
 					Canvas.SetTop(panel, 0);
 				}
+				var floatingTabGroup = new TabGroup();
+				floatingTabGroup.AddPanel(panel);
+				floatingTabGroup.ActiveIndex = 0;
 				panel.SetFloating(true);
 				panel.RaiseLayoutChanged();
 			}
@@ -159,6 +162,10 @@ public class DragManager
 					var targetDockGrid = tabDropTarget.DockGrid;
 					if (targetDockGrid != null)
 					{
+						if (panel.TabGroup != null)
+						{
+							panel.TabGroup.RemovePanel(panel);
+						}
 						panel.SetFloating(false);
 						targetDockGrid.DockAsTab(panel, tabDropTarget);
 						panel.DockGrid = targetDockGrid;
@@ -173,6 +180,10 @@ public class DragManager
 						var posInDockGrid = targetDockGrid.TranslatePoint(new Point(0, 0), visualRoot);
 						if (posInDockGrid.HasValue)
 						{
+							if (panel.TabGroup != null)
+							{
+								panel.TabGroup.RemovePanel(panel);
+							}
 							var relativePos = posRoot - posInDockGrid.Value;
 							targetDockGrid.Dock(panel, relativePos);
 							panel.DockGrid = targetDockGrid;

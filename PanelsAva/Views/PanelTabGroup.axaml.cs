@@ -72,6 +72,12 @@ public partial class PanelTabGroup : UserControl
 	public void SetFloating(bool floating)
 	{
 		IsFloating = floating;
+		if (floating && TabGroup == null)
+		{
+			var floatingTabGroup = new TabGroup();
+			floatingTabGroup.AddPanel(this);
+			floatingTabGroup.ActiveIndex = 0;
+		}
 		RefreshTabStrip();
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
@@ -115,19 +121,13 @@ public partial class PanelTabGroup : UserControl
 
 	public void ClosePanel(PanelTabItem item)
 	{
-		if (item.Tag == this)
-		{
-			CloseRequested?.Invoke(this, EventArgs.Empty);
-		}
-		else if (item.Tag is PanelTabGroup panel)
+		if (item.Tag is PanelTabGroup panel)
 		{
 			TabGroup?.RemovePanel(panel);
-			// Mark the panel as hidden
 			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
 			
 			if (TabGroup.Panels.Count == 0)
 			{
-				// Group is empty, close the entire container
 				CloseRequested?.Invoke(this, EventArgs.Empty);
 			}
 			else
@@ -145,70 +145,28 @@ public partial class PanelTabGroup : UserControl
 	public void RefreshTabStrip()
 	{
 		if (tabStrip == null) return;
+		if (TabGroup == null) return;
 
 		tabStrip.Children.Clear();
 
-		if (TabGroup == null || TabGroup.Panels.Count == 0)
+		for (int i = 0; i < TabGroup.Panels.Count; i++)
 		{
-			if (IsFloating)
+			var panel = TabGroup.Panels[i];
+			var isActive = i == TabGroup.ActiveIndex;
+			var tabItem = new PanelTabItem
 			{
-				var titleItem = new PanelTabItem
-				{
-					Title = this.Title,
-					IsActive = true,
-					IsCloseVisible = true,
-					IsTab = true,
-					ParentGroup = this,
-					Tag = this
-				};
-				titleItem.Loaded += (s, e) => {
-					var border = titleItem.FindControl<Border>("TabBorder");
-					if (border != null) border.Tag = this;
-				};
-				tabStrip.Children.Add(titleItem);
-			}
-			return;
-		}
-
-		bool isSingle = TabGroup.Panels.Count == 1;
-		if (isSingle)
-		{
-			var titleItem = new PanelTabItem
-			{
-				Title = this.Title,
-				IsActive = true,
+				Title = panel.Title,
+				IsActive = isActive,
 				IsCloseVisible = IsFloating,
-				IsTab = false,
+				IsTab = true,
 				ParentGroup = this,
-				Tag = this
+				Tag = panel
 			};
-			titleItem.Loaded += (s, e) => {
-				var border = titleItem.FindControl<Border>("TabBorder");
-				if (border != null) border.Tag = this;
+			tabItem.Loaded += (s, e) => {
+				var border = tabItem.FindControl<Border>("TabBorder");
+				if (border != null) border.Tag = panel;
 			};
-			tabStrip.Children.Add(titleItem);
-		}
-		else
-		{
-			for (int i = 0; i < TabGroup.Panels.Count; i++)
-			{
-				var panel = TabGroup.Panels[i];
-				var isActive = i == TabGroup.ActiveIndex;
-				var tabItem = new PanelTabItem
-				{
-					Title = panel.Title,
-					IsActive = isActive,
-					IsCloseVisible = IsFloating,
-					IsTab = true,
-					ParentGroup = this,
-					Tag = panel
-				};
-				tabItem.Loaded += (s, e) => {
-					var border = tabItem.FindControl<Border>("TabBorder");
-					if (border != null) border.Tag = panel;
-				};
-				tabStrip.Children.Add(tabItem);
-			}
+			tabStrip.Children.Add(tabItem);
 		}
 	}
 
@@ -229,10 +187,6 @@ public partial class PanelTabGroup : UserControl
 			if (border.Tag is PanelTabGroup panel && TabGroup != null)
 			{
 				mainView.dragManager.StartPotentialDrag(panel, (Pointer)e.Pointer, pressPointRoot, dragOffset.X, dragOffset.Y, offsetRatioX, border, panel.IsFloating);
-			}
-			else if (border.Tag == this)
-			{
-				mainView.dragManager.StartPotentialDrag(this, (Pointer)e.Pointer, pressPointRoot, dragOffset.X, dragOffset.Y, offsetRatioX, border, IsFloating);
 			}
 			e.Handled = true;
 		}
@@ -259,6 +213,7 @@ public partial class PanelTabGroup : UserControl
 			if (sender is Border border && border.Tag is PanelTabGroup panel && TabGroup != null)
 			{
 				TabGroup.SetActive(panel);
+				RefreshTabStrip();
 				DockGrid?.RebuildGrid();
 			}
 		}
