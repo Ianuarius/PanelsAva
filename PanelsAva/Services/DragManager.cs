@@ -35,6 +35,10 @@ public class DragManager
 	bool wasFloating;
 	Border? previewBorder;
 
+	/// <summary>Creates a DragManager to handle dragging of panels and tabs, managing floating states and docking previews.</summary>
+	/// <param name="visualRoot">The top-level visual element providing the coordinate system for drag position calculations and scaling factors.</param>
+	/// <param name="floatingLayer">The canvas container where floating panels are rendered above other UI elements during drag operations.</param>
+	/// <param name="mainView">Optional reference to the main view, required for FileTabItems, for coordinating floating tab creation, movement, and docking logic.</param>
 	public DragManager(Visual visualRoot, Canvas floatingLayer, MainView? mainView = null)
 	{
 		this.visualRoot = visualRoot;
@@ -45,9 +49,18 @@ public class DragManager
 	public bool IsDragging => isDragging;
 	public bool ThresholdExceeded => thresholdExceeded;
 
+	/// <summary>Initializes a potential drag operation, storing drag parameters and capturing the pointer to track movement.</summary>
+	/// <param name="source">The UI element or object being dragged, such as a PanelTabGroup or FileTabItem.</param>
+	/// <param name="pointer">The pointer device that initiated the drag gesture.</param>
+	/// <param name="pressPoint">The initial pointer press position in root visual coordinates.</param>
+	/// <param name="offsetX">Horizontal offset from the pointer to the drag element's origin.</param>
+	/// <param name="offsetY">Vertical offset from the pointer to the drag element's origin.</param>
+	/// <param name="offsetRatioX">Ratio-based horizontal offset for proportional dragging (e.g., based on element width).</param>
+	/// <param name="capture">Optional control to capture pointer events on for reliable drag tracking.</param>
+	/// <param name="floating">Indicates if the source element was already in a floating state before the drag.</param>
 	public void StartPotentialDrag(object source, Pointer pointer, Point pressPoint, double offsetX, double offsetY, double offsetRatioX, Control? capture, bool floating)
 	{
-		if (isDragging) CancelDrag();
+		if (isDragging) ReleaseDrag();
 		dragSource = source;
 		currentPointer = pointer;
 		pressPointRoot = pressPoint;
@@ -61,6 +74,8 @@ public class DragManager
 		if (capture != null) pointer.Capture(capture);
 	}
 
+	/// <summary>Updates the drag operation with the current pointer position, checking drag threshold, moving floating elements, and showing docking previews.</summary>
+	/// <param name="posRoot">The current pointer position in root visual coordinates.</param>
 	public void UpdateDrag(Point posRoot)
 	{
 		if (!isDragging) return;
@@ -179,11 +194,6 @@ public class DragManager
 		}
 	}
 
-	public void CancelDrag()
-	{
-		ReleaseDrag();
-	}
-
 	/// <summary>
 	/// Attempt to recover pointer capture when a captured control loses capture during a drag.
 	/// If recovery succeeds, update internal captureControl; otherwise leave drag active so
@@ -216,6 +226,7 @@ public class DragManager
 		}
 	}
 
+	/// <summary>Cleans up drag state by releasing pointer capture, clearing previews, and resetting all drag-related fields.</summary>
 	void ReleaseDrag()
 	{
 		if (!isDragging) return;
@@ -340,6 +351,7 @@ public class DragManager
 		Canvas.SetTop(previewBorder, rect.Top);
 	}
 
+	/// <summary>Removes the docking preview border from the floating layer and resets the preview reference.</summary>
 	void ClearPreview()
 	{
 		if (previewBorder != null)
