@@ -82,66 +82,7 @@ public partial class PanelTabGroup : UserControl
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	protected override Size MeasureOverride(Size availableSize)
-	{
-		var size = base.MeasureOverride(availableSize);
-		if (double.IsInfinity(availableSize.Width) || double.IsInfinity(availableSize.Height))
-		{
-			var width = double.IsInfinity(availableSize.Width) ? Math.Max(size.Width, 200) : size.Width;
-			var height = double.IsInfinity(availableSize.Height) ? Math.Max(size.Height, 120) : size.Height;
-			return new Size(width, height);
-		}
-		return availableSize;
-	}
-
-	void MoveToFloatingLayer(Canvas layer, double left, double top)
-	{
-		MainView.RemoveFromParent(this);
-		layer.Children.Add(this);
-		this.SetValue(Panel.ZIndexProperty, 1);
-		Canvas.SetLeft(this, left);
-		Canvas.SetTop(this, top);
-	}
-
-	public void SetFloatingBounds(Canvas layer, double left, double top, double width, double height)
-	{
-		MoveToFloatingLayer(layer, left, top);
-		if (width > 0)
-			Width = width;
-		if (height > 0)
-			Height = height;
-		SetFloating(true);
-		LayoutChanged?.Invoke(this, EventArgs.Empty);
-	}
-
-	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-	{
-		CloseRequested?.Invoke(this, EventArgs.Empty);
-	}
-
-	public void ClosePanel(PanelTabItem item)
-	{
-		if (item.Tag is PanelTabGroup panel)
-		{
-			TabGroup?.RemovePanel(panel);
-			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
-			
-			if (TabGroup.Panels.Count == 0)
-			{
-				CloseRequested?.Invoke(this, EventArgs.Empty);
-			}
-			else
-			{
-				RefreshTabStrip();
-				if (!IsFloating)
-				{
-					DockGrid?.RebuildGrid();
-				}
-			}
-		}
-	}
-
-	/// <summary>Rebuilds the tab strip UI to match the current panel state: shows a single title bar for one panel, individual clickable tabs for multiple panels, and adds close buttons only when floating. Clears and repopulates the tab strip controls accordingly.</summary>
+	/// <summary>Rebuilds the tab strip by creating a clickable tab for each panel in the TabGroup, marks the active panel, and shows close buttons on tabs only when the group is floating.</summary>
 	public void RefreshTabStrip()
 	{
 		if (tabStrip == null) return;
@@ -158,7 +99,6 @@ public partial class PanelTabGroup : UserControl
 				Title = panel.Title,
 				IsActive = isActive,
 				IsCloseVisible = IsFloating,
-				IsTab = true,
 				ParentGroup = this,
 				Tag = panel
 			};
@@ -170,6 +110,9 @@ public partial class PanelTabGroup : UserControl
 		}
 	}
 
+	/// <summary>Handles left-click on a tab border to initiate dragging the associated panel, calculating the press position relative to the visual root, drag offset, and starting the potential drag operation.</summary>
+	/// <param name="sender">The Border control of the tab that was pressed.</param>
+	/// <param name="e">The pointer pressed event arguments containing press details.</param>
 	public void TabOnPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (sender is Border border)
@@ -233,6 +176,65 @@ public partial class PanelTabGroup : UserControl
 	public void RaiseLayoutChanged()
 	{
 		LayoutChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	public void ClosePanel(PanelTabItem item)
+	{
+		if (item.Tag is PanelTabGroup panel)
+		{
+			TabGroup?.RemovePanel(panel);
+			panel.CloseRequested?.Invoke(panel, EventArgs.Empty);
+			
+			if (TabGroup.Panels.Count == 0)
+			{
+				CloseRequested?.Invoke(this, EventArgs.Empty);
+			}
+			else
+			{
+				RefreshTabStrip();
+				if (!IsFloating)
+				{
+					DockGrid?.RebuildGrid();
+				}
+			}
+		}
+	}
+
+	protected override Size MeasureOverride(Size availableSize)
+	{
+		var size = base.MeasureOverride(availableSize);
+		if (double.IsInfinity(availableSize.Width) || double.IsInfinity(availableSize.Height))
+		{
+			var width = double.IsInfinity(availableSize.Width) ? Math.Max(size.Width, 200) : size.Width;
+			var height = double.IsInfinity(availableSize.Height) ? Math.Max(size.Height, 120) : size.Height;
+			return new Size(width, height);
+		}
+		return availableSize;
+	}
+
+	void MoveToFloatingLayer(Canvas layer, double left, double top)
+	{
+		MainView.RemoveFromParent(this);
+		layer.Children.Add(this);
+		this.SetValue(Panel.ZIndexProperty, 1);
+		Canvas.SetLeft(this, left);
+		Canvas.SetTop(this, top);
+	}
+
+	public void SetFloatingBounds(Canvas layer, double left, double top, double width, double height)
+	{
+		MoveToFloatingLayer(layer, left, top);
+		if (width > 0)
+			Width = width;
+		if (height > 0)
+			Height = height;
+		SetFloating(true);
+		LayoutChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	void CloseButtonOnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+	{
+		CloseRequested?.Invoke(this, EventArgs.Empty);
 	}
 
 }

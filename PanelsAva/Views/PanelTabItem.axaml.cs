@@ -57,6 +57,7 @@ public partial class PanelTabItem : UserControl
 		set => SetValue(ParentGroupProperty, value);
 	}
 
+	/// <summary>Store a reference to the underlying panel object for each tab so the UI can map a clicked/tabbed control back to the panel it represents.</summary>
 	public object Tag { get; set; }
 
 	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
