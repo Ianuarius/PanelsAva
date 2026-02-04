@@ -135,7 +135,7 @@ public class DragManager
 				var floatingLayerPos = floatingLayer.TranslatePoint(new Point(0, 0), visualRoot);
 				if (floatingLayerPos.HasValue)
 				{
-					var dragOffset = new Point(panel.Bounds.Width * dragOffsetRatioX, dragOffsetY);
+					var dragOffset = new Point(dragOffsetX, dragOffsetY);
 					var posInFloatingLayer = posRoot - floatingLayerPos.Value;
 					var panelPos = posInFloatingLayer - dragOffset;
 					Canvas.SetLeft(panel, panelPos.X);

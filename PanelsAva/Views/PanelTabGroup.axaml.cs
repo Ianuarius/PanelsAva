@@ -123,7 +123,7 @@ public partial class PanelTabGroup : UserControl
 			var visualRoot = this.GetVisualRoot() as Visual;
 			if (visualRoot == null) return;
 			var pressPointRoot = e.GetPosition(visualRoot);
-			var panelPos = this.TranslatePoint(new Point(0, 0), visualRoot);
+			var panelPos = border.TranslatePoint(new Point(0, 0), visualRoot);
 			if (!panelPos.HasValue) return;
 			var dragOffset = pressPointRoot - panelPos.Value;
 			var offsetRatioX = this.Bounds.Width > 0 ? dragOffset.X / this.Bounds.Width : 0;

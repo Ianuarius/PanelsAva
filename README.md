@@ -78,7 +78,6 @@ Core components
 TODO
 ----
 - Regression in reorganizing file tabs: dropped tab always goes to the end.
-- Regression in X-offset of the dragged panel in relation to pointer.
 - Closing and reopening panels in TabStrips seems a bit fragile and might sometimes break the panel open state.
 - Reorganize panels in tabstrip by dragging them to a specific location.
 
