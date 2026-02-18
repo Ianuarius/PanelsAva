@@ -83,4 +83,4 @@ TODO
 
 License
 -------
-CC BY 4.0
+MIT
